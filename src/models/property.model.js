@@ -28,13 +28,13 @@ const Property = sequelize.define("Property", {
   city: { type: DataTypes.STRING }, // The optional city field
   latitude: { type: DataTypes.FLOAT },
   longitude: { type: DataTypes.FLOAT },
-
+  cityParcelId: { type: DataTypes.STRING, allowNull: true },
   // === Summary Tab: Classification ===
   type: {
     type: DataTypes.ENUM(
       "Residential",
       "Commercial",
-      "Industrial",
+      "Land",
       "Mixed Use"
     ),
     allowNull: false,
@@ -45,23 +45,23 @@ const Property = sequelize.define("Property", {
   // === Key Metrics Tab ===
   totalSqft: {
     type: DataTypes.INTEGER,
-    allowNull: true, // 👈 CHANGE THIS
+    allowNull: true,
     defaultValue: 0,
   },
   usableSqft: {
     type: DataTypes.INTEGER,
-    allowNull: true, // 👈 CHANGE THIS
+    allowNull: true,
     defaultValue: 0,
   },
   occupancyRate: { type: DataTypes.FLOAT },
   noi: {
     type: DataTypes.FLOAT,
-    allowNull: true, // 👈 CHANGE THIS
+    allowNull: true,
     defaultValue: 0,
   },
   noiFrequency: {
     type: DataTypes.ENUM("Monthly", "Annual"),
-    allowNull: true, // 👈 CHANGE THIS
+    allowNull: true,
   },
 
   // For simplicity, we will store these arrays of objects as JSONB.

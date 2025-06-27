@@ -2,6 +2,7 @@
 const Property = require("../models/property.model");
 // You might need your Unit model if you manage them here too
 // const Unit = require('../models/unit.model');
+const { getCoordsFromAddress } = require("../services/geocoding.service"); // 👈 Import our new service function
 
 // --- GET ALL PROPERTIES ---
 exports.getAllProperties = async (req, res) => {
@@ -37,35 +38,8 @@ exports.getPropertyById = async (req, res) => {
 exports.createProperty = async (req, res) => {
   try {
     const { summary } = req.body;
-    // Reshape the incoming form data to match the "flat" Property model
-    // const propertyData = {
-    //   // From summary group
-    //   name: req.body.summary.name,
-    //   propertyId: req.body.summary.propertyId,
-    //   alternateId: req.body.summary.alternateId,
-    //   address: req.body.summary.address,
-    //   county: req.body.summary.county,
-    //   countyUrl: req.body.summary.countyUrl,
-    //   type: req.body.summary.type,
-    //   subType: req.body.summary.subType,
-    //   zoning: req.body.summary.zoning,
-    //   description: req.body.summary.description,
-    //   imageUrls: req.body.summary.imageUrls,
-
-    //   // From metrics group
-    //   totalSqft: req.body.metrics.totalSqft,
-    //   usableSqft: req.body.metrics.usableSqft,
-    //   occupancyRate: req.body.metrics.occupancyRate,
-    //   noi: req.body.metrics.noi,
-    //   noiFrequency: req.body.metrics.noiFrequency,
-
-    //   // From other groups (assuming models for these exist and are linked)
-    //   units: req.body.metrics.units || [], // This would be more complex, likely its own table
-    //   assignedTenantIds: req.body.tenants.assignedTenantIds,
-    //   // documents: req.body.documents,
-    // };
     const propertyData = {
-      entityName: summary.entityName, // 👈 Ensure this line exists
+      entityName: summary.entityName,
       name: summary.name,
       propertyId: summary.propertyId,
       alternateId: summary.alternateId,
@@ -74,16 +48,20 @@ exports.createProperty = async (req, res) => {
       acres: req.body.metrics?.acres,
       countyUrl: summary.countyUrl,
       city: summary.city,
+      cityParcelId: summary?.cityParcelId,
       type: summary.type,
       subType: summary.subType,
       zoning: summary.zoning,
-      // insurance: req.body?.metrics?.insurance,
-      // taxDetails: req.body.history?.taxDetails,
       description: summary.description,
       imageUrls: summary.imageUrls,
-      // Metrics and other fields will be null/default initially
     };
-
+    if (propertyData.address) {
+      const coords = await getCoordsFromAddress(propertyData.address);
+      if (coords && coords?.latitude && coords.longitude) {
+        propertyData.latitude = parseFloat(coords.latitude);
+        propertyData.longitude = parseFloat(coords.longitude);
+      }
+    }
     const newProperty = await Property.create(propertyData);
     res.status(201).json(newProperty);
   } catch (error) {

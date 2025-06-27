@@ -4,9 +4,9 @@ require("dotenv").config();
 const sequelize = require("./config/database");
 const propertyRoutes = require("./routes/property.routes");
 const authRoutes = require("./routes/auth.routes");
-const projectRoutes = require("./routes/project.routes"); // 👈 Import new Project routes
-const tenantRoutes = require("./routes/tenant.routes"); // 👈 Import new Tenant routes
-const leaseRoutes = require("./routes/lease.routes"); // 👈 Import new Lease routes
+const projectRoutes = require("./routes/project.routes");
+const tenantRoutes = require("./routes/tenant.routes");
+const leaseRoutes = require("./routes/lease.routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
