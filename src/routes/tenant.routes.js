@@ -14,5 +14,6 @@ router.get('/:id', tenantController.getTenantById);
 router.post('/', tenantValidationRules(), validate, tenantController.createTenant);
 router.put('/:id', tenantValidationRules(), validate, tenantController.updateTenant);
 router.delete('/:id', tenantController.deleteTenant);
+router.get('/:tenantId/history', tenantController.getTenantHistory);
 
 module.exports = router;

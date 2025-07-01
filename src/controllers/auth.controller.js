@@ -51,7 +51,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: "1d" } // Token will be valid for 1 day
+      { expiresIn: "15d" } // Token will be valid for 15 days
     );
 
     // Send the token back to the client

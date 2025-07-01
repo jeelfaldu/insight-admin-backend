@@ -7,6 +7,8 @@ const authRoutes = require("./routes/auth.routes");
 const projectRoutes = require("./routes/project.routes");
 const tenantRoutes = require("./routes/tenant.routes");
 const leaseRoutes = require("./routes/lease.routes");
+const uploadRoutes = require("./routes/upload.routes");
+const dataImportRoutes = require('./routes/data-import.routes'); // Import new routes
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +29,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/tenants", tenantRoutes);
 app.use("/api/leases", leaseRoutes);
+app.use("/api/upload", uploadRoutes);
+app.use('/api/data-import', dataImportRoutes); // Use new routes
 
 // === Database Connection & Server Start ===
 sequelize
