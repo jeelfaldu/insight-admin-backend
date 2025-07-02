@@ -118,3 +118,114 @@ exports.getTenantHistory = async (req, res) => {
       .json({ message: "Error fetching tenant history", error: error.message });
   }
 };
+
+/**
+ * GET /api/tenants/:tenantId/attachments
+ * Fetches all attachments for a specific tenant.
+ */
+exports.getAttachments = async (req, res) => {
+  try {
+    const { tenantId } = req.params;
+
+    // First, verify the tenant exists to ensure a valid request
+    const tenantExists = await Tenant.findByPk(tenantId);
+    if (!tenantExists) {
+      return res.status(404).json({ message: "Tenant not found" });
+    }
+
+    const attachments = await TenantAttachment.findAll({
+      where: { tenantId: tenantId },
+      order: [["createdAt", "DESC"]], // Show the newest attachments first
+    });
+
+    res.status(200).json(attachments);
+  } catch (error) {
+    res
+      .status(500)
+      .json({
+        message: "Error fetching tenant attachments",
+        error: error.message,
+      });
+  }
+};
+
+/**
+ * POST /api/tenants/:tenantId/attachments
+ * Adds a new attachment record for a specific tenant.
+ * Assumes the file has already been uploaded and the URL is available.
+ */
+exports.addAttachment = async (req, res) => {
+  try {
+    const { tenantId } = req.params;
+    const { fileName, fileUrl, category } = req.body;
+
+    // Basic validation
+    if (!fileName || !fileUrl || !category) {
+      return res
+        .status(400)
+        .json({
+          message: "Missing required fields: fileName, fileUrl, category",
+        });
+    }
+
+    const tenantExists = await Tenant.findByPk(tenantId);
+    if (!tenantExists) {
+      return res
+        .status(404)
+        .json({ message: "Cannot add attachment to a non-existent tenant" });
+    }
+
+    const newAttachment = await TenantAttachment.create({
+      tenantId,
+      fileName,
+      fileUrl,
+      category,
+    });
+
+    res.status(201).json(newAttachment);
+  } catch (error) {
+    res
+      .status(500)
+      .json({
+        message: "Error adding tenant attachment",
+        error: error.message,
+      });
+  }
+};
+
+/**
+ * DELETE /api/tenants/:tenantId/attachments/:attachmentId
+ * Deletes a specific attachment record.
+ */
+exports.deleteAttachment = async (req, res) => {
+  try {
+    const { tenantId, attachmentId } = req.params;
+
+    const attachment = await TenantAttachment.findOne({
+      where: {
+        id: attachmentId,
+        tenantId: tenantId, // Ensure the attachment belongs to the correct tenant
+      },
+    });
+
+    if (!attachment) {
+      return res
+        .status(404)
+        .json({ message: "Attachment not found for this tenant" });
+    }
+
+    // In a real app, you would also trigger a deletion of the file
+    // from your cloud storage (e.g., S3) here.
+
+    await attachment.destroy();
+
+    res.status(204).send(); // Success, no content
+  } catch (error) {
+    res
+      .status(500)
+      .json({
+        message: "Error deleting tenant attachment",
+        error: error.message,
+      });
+  }
+};
