@@ -8,5 +8,7 @@ router.use(authMiddleware);
 
 // Define the route to get our prioritized alerts
 router.get('/alerts', dashboardController.getDashboardAlerts);
+router.get('/summary', dashboardController.getSummaryData);
+router.get('/chart-data', dashboardController.getChartData);
 
 module.exports = router;

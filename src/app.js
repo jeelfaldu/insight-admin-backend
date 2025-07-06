@@ -8,9 +8,12 @@ const projectRoutes = require("./routes/project.routes");
 const tenantRoutes = require("./routes/tenant.routes");
 const leaseRoutes = require("./routes/lease.routes");
 const uploadRoutes = require("./routes/upload.routes");
-const dataImportRoutes = require("./routes/data-import.routes"); // Import new routes
-const attachmentRoutes = require("./routes/attachment.routes"); // Import attachment routes
-const calendarRoutes = require("./routes/calendar.routes"); // Import calendar routes
+const dataImportRoutes = require("./routes/data-import.routes");
+const attachmentRoutes = require("./routes/attachment.routes");
+const calendarRoutes = require("./routes/calendar.routes");
+const dashboardRoutes = require("./routes/dashboard.routes");
+const userRoutes = require("./routes/user.routes");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -34,6 +37,8 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/data-import", dataImportRoutes); // Use new routes
 app.use("/api/attachments", attachmentRoutes);
 app.use("/api/calendar-events", calendarRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use('/api/users', userRoutes);
 
 // === Database Connection & Server Start ===
 sequelize
@@ -42,7 +47,7 @@ sequelize
     console.log("✅ Database connection has been established successfully.");
     // Synchronize models (optional, good for development)
     // Use { alter: true } to non-destructively update tables
-    return sequelize.sync({ alter: true });
+    return sequelize.sync({ alter: false });
   })
   .then(() => {
     app.listen(PORT, () => {

@@ -11,9 +11,23 @@ const User = sequelize.define(
       allowNull: false,
       unique: true,
     },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+    },
     password: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    // 👇 ADD THESE NEW FIELDS FOR PASSWORD RESET
+    passwordResetToken: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    passwordResetExpires: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     role: {
       type: DataTypes.ENUM("user", "admin"), // Defines the possible roles
