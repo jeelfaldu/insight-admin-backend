@@ -39,6 +39,10 @@ const Lease = sequelize.define(
       type: DataTypes.STRING,
       defaultValue: "manual", // Can be 'manual' or 'csv_import'
     },
+    securityDisputeAmount: {
+      type: DataTypes.FLOAT,
+      allowNull: true, // It's optional
+    },
   },
   {
     timestamps: true,

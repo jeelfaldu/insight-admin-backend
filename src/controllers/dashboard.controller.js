@@ -1,7 +1,7 @@
 // src/controllers/dashboard.controller.js
 const { Op, fn, col } = require("sequelize");
 const CalendarEvent = require("../models/calendar-event.model");
-const { startOfDay, addDays, subDays } = require("date-fns");
+const { startOfDay, addDays, subDays, subMonths, endOfToday } = require("date-fns");
 const Property = require("../models/property.model");
 const Project = require("../models/project.model");
 const Lease = require("../models/lease.model");
@@ -179,27 +179,54 @@ exports.getSummaryData = async (req, res) => {
 // GET /api/dashboard/chart-data
 exports.getChartData = async (req, res) => {
   try {
+    // --- 1. Get filter values from the query string, with defaults ---
+    const propertyIds = req.query.propertyIds
+      ? req.query.propertyIds.split(",")
+      : null;
+    const timePeriod = req.query.timePeriod || "6m"; // Default to last 6 months
+
+    // --- 2. Define the date range based on the time period ---
+    let startDate;
+    const endDate = endOfToday();
+    if (timePeriod === "12m") startDate = subMonths(endDate, 12);
+    else if (timePeriod === "ytd")
+      startDate = new Date(endDate.getFullYear(), 0, 1); // Year to date
+    else startDate = subMonths(endDate, 6); // Default: last 6 months
+
+    // --- 3. Build WHERE clauses for our database queries ---
+    const leaseWhereClause = {
+      startDate: { [Op.lte]: endDate },
+      endDate: { [Op.gte]: startDate },
+    };
+    const receivableWhereClause = {
+      lastPaymentDate: { [Op.between]: [startDate, endDate] },
+    };
+    if (propertyIds) {
+      leaseWhereClause.propertyId = { [Op.in]: propertyIds };
+      receivableWhereClause.propertyId = { [Op.in]: propertyIds };
+    }
+
     const [
       // 👇 THIS IS THE NEW, EFFICIENT QUERY
       receivables,
       leases,
     ] = await Promise.all([
-      // Use Sequelize's aggregate functions to do a SUM...GROUP BY...
       RentRollImport.findAll({
         attributes: [
           "month",
           // fn('sum', col('...')) is how you do SUM(...) in Sequelize
           [fn("sum", col("amountReceivable")), "totalReceivable"],
         ],
+        where: receivableWhereClause,
         group: ["month"],
         order: [["month", "ASC"]],
         raw: true, // Get a plain JSON object, not a Sequelize instance
       }),
-      Lease.findAll(),
+      Lease.findAll({ where: leaseWhereClause }),
     ]);
 
     // ... (Processing for Billed Data from Leases is unchanged) ...
-    const billedData = processLeasesIntoMonthlyData(leases); // Assume this is a helper function now
+    const billedData = processLeasesIntoMonthlyData(leases, { start: startDate, end: endDate }); // Assume this is a helper function now
 
     // Format Receivable Data
     const receivableData = receivables.map((item) => ({

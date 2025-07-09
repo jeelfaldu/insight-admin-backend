@@ -2,10 +2,11 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 const ChecklistItem = {
-    id: DataTypes.STRING,
-    text: DataTypes.STRING,
-    isCompleted: DataTypes.BOOLEAN,
-    dueDate: DataTypes.DATEONLY
+  id: DataTypes.STRING,
+  text: DataTypes.STRING,
+  isCompleted: DataTypes.BOOLEAN,
+  dueDate: DataTypes.DATEONLY,
+  checkDate: DataTypes.DATEONLY,
 };
 const Project = sequelize.define(
   "Project",
