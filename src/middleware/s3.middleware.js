@@ -1,4 +1,3 @@
-// src/middleware/s3.middleware.js
 const { S3Client, DeleteObjectCommand } = require("@aws-sdk/client-s3"); // Import the S3 Client
 const multer = require("multer");
 const multerS3 = require("multer-s3");
@@ -56,4 +55,4 @@ async function deleteSingleFile(bucketName, fileKey) {
   }
 }
 
-module.exports = { upload, deleteSingleFile };
+module.exports = { upload, deleteSingleFile, s3Client: client };

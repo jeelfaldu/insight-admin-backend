@@ -1,7 +1,13 @@
 // src/controllers/dashboard.controller.js
 const { Op, fn, col } = require("sequelize");
 const CalendarEvent = require("../models/calendar-event.model");
-const { startOfDay, addDays, subDays, subMonths, endOfToday } = require("date-fns");
+const {
+  startOfDay,
+  addDays,
+  subDays,
+  subMonths,
+  endOfToday,
+} = require("date-fns");
 const Property = require("../models/property.model");
 const Project = require("../models/project.model");
 const Lease = require("../models/lease.model");
@@ -73,6 +79,7 @@ function calculateTrend(current, previous) {
 exports.getSummaryData = async (req, res) => {
   try {
     const today = startOfDay(new Date());
+    const startOfToday = startOfDay(today); // Normalize to the very beginning of today (00:00:00)
 
     // Define the time periods for calculating trends
     const currentPeriodStart = subDays(today, 29); // The last 30 days (inclusive of today)
@@ -122,21 +129,16 @@ exports.getSummaryData = async (req, res) => {
     const occupancyRate =
       totalSystemSqft > 0 ? (totalOccupiedSqft / totalSystemSqft) * 100 : 0;
 
-    // -- Calculate Total Estimated Monthly Revenue --
     let monthlyRevenue = 0;
-    activeLeases.forEach((lease) => {
-      const now = new Date();
-      // Find the rent charge active for today
-      const currentRent = lease.rentSchedule?.find(
-        (c) => new Date(c.startDate) <= now && new Date(c.endDate) >= now
-      );
-      // Find the CAMIT charge active for today
-      const currentCamit = lease.camitSchedule?.find(
-        (c) => new Date(c.startDate) <= now && new Date(c.endDate) >= now
-      );
 
-      monthlyRevenue += currentRent?.monthlyAmount || 0;
-      monthlyRevenue += currentCamit?.monthlyAmount || 0;
+    activeLeases.forEach((lease) => {
+      const currentRentEntry = lease.rentSchedule?.find((charge) => {
+        const chargeStart = startOfDay(new Date(charge.startDate));
+        const chargeEnd = startOfDay(new Date(charge.endDate));
+        return chargeStart <= startOfToday && chargeEnd >= startOfToday;
+      });
+
+      monthlyRevenue += currentRentEntry?.monthlyAmount || 0;
     });
 
     // -- Calculate Trends --
@@ -226,7 +228,10 @@ exports.getChartData = async (req, res) => {
     ]);
 
     // ... (Processing for Billed Data from Leases is unchanged) ...
-    const billedData = processLeasesIntoMonthlyData(leases, { start: startDate, end: endDate }); // Assume this is a helper function now
+    const billedData = processLeasesIntoMonthlyData(leases, {
+      start: startDate,
+      end: endDate,
+    }); // Assume this is a helper function now
 
     // Format Receivable Data
     const receivableData = receivables.map((item) => ({
