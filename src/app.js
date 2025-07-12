@@ -13,8 +13,8 @@ const attachmentRoutes = require("./routes/attachment.routes");
 const calendarRoutes = require("./routes/calendar.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const userRoutes = require("./routes/user.routes");
-const boxRoutes = require('./routes/box.routes'); // 👈 1. Import the new routes
-
+const boxRoutes = require("./routes/box.routes"); // 👈 1. Import the new routes
+const financials = require("./routes/financials.routes");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -39,8 +39,9 @@ app.use("/api/data-import", dataImportRoutes); // Use new routes
 app.use("/api/attachments", attachmentRoutes);
 app.use("/api/calendar-events", calendarRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/box', boxRoutes); // 👈 2. Use the new routes with the '/api/box' prefix
+app.use("/api/users", userRoutes);
+app.use("/api/box", boxRoutes); // 👈 2. Use the new routes with the '/api/box' prefix
+app.use("/api/financials", financials); // 👈 2. Use the new routes with the '/api/box' prefix
 
 // === Database Connection & Server Start ===
 sequelize

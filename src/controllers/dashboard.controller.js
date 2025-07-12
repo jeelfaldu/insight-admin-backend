@@ -98,7 +98,7 @@ exports.getSummaryData = async (req, res) => {
       Property.count(),
       Project.count({ where: { status: { [Op.not]: "Completed" } } }),
       Lease.findAll({ where: { endDate: { [Op.gte]: today } } }),
-      Property.findAll({ attributes: ["id", "units", "usableSqft"] }),
+      Property.findAll({ attributes: ["id", "units", "usableSqft", "type"] }),
       Property.count({
         where: { createdAt: { [Op.between]: [currentPeriodStart, today] } },
       }),
@@ -147,6 +147,30 @@ exports.getSummaryData = async (req, res) => {
       propertiesInPreviousPeriod
     );
 
+    const occupancyByType = {}; // e.g., { Commercial: 250000, Residential: 120000 }
+
+    activeLeases.forEach((lease) => {
+      const property = allPropertiesWithUnits.find(
+        (p) => p.id + "" === lease.propertyId + ""
+      );
+      console.debug("🚀 ~ activeLeases.forEach ~ property:", property);
+      const unit = property?.units.find((u) => u.id + "" === lease.unitId + "");
+      console.debug("🚀 ~ activeLeases.forEach ~ unit:", unit);
+
+      if (property && unit) {
+        const type = property.type;
+        if (!occupancyByType[type]) {
+          occupancyByType[type] = 0;
+        }
+        occupancyByType[type] += unit.sqft;
+      }
+    });
+
+    const occupancyChartData = Object.keys(occupancyByType).map((key) => ({
+      name: key,
+      value: occupancyByType[key],
+    }));
+
     // --- Step 3: Construct the final JSON response object ---
     const summaryData = {
       totalProperties: {
@@ -169,6 +193,7 @@ exports.getSummaryData = async (req, res) => {
         trend: "+3.2% from last month", // Placeholder
         trendDirection: "up",
       },
+      occupancyChartData,
     };
 
     res.status(200).json(summaryData);

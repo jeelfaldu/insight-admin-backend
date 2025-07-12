@@ -16,8 +16,6 @@ router.post(
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: "No files uploaded." });
     }
-    console.debug("req.files:", req.files);
-
     // `multer-s3` provides the 'location' key which is the public URL of the uploaded file
     // https://hamfvokuwdzthgkgisxb.supabase.co/storage/v1/object/public/insight.admin.dev/properties/image-1751279312381-388872947.jpeg
     const fileUrls = req.files.map(
