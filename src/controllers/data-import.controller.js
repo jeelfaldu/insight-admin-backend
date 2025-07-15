@@ -144,7 +144,7 @@ exports.uploadRentRollData = async (req, res) => {
         if (isNaN(date.getTime())) {
           errors.push({
             row: i + 1,
-            text: tenantName,
+            text: tenantNameFromCsv,
             reason: `Invalid date format in 'Last Payment' column.`,
           });
           continue;
