@@ -15,8 +15,15 @@ const dashboardRoutes = require("./routes/dashboard.routes");
 const userRoutes = require("./routes/user.routes");
 const boxRoutes = require("./routes/box.routes"); // 👈 1. Import the new routes
 const financials = require("./routes/financials.routes");
+const reminderRoutes = require("./routes/reminder.routes");
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+var BoxSDK = require("box-node-sdk");
+var sdk = new BoxSDK({
+  clientID: "ojrt9rljip48t2dhld5iofl1tl0oetz1",
+  clientSecret: "6KPVXyMihTAAnVNLsGGacaqL7exP55gq",
+});
 
 // === Middleware ===
 app.use(cors());
@@ -26,6 +33,61 @@ app.use(express.json());
 // === API Routes ===
 app.get("/", (req, res) => {
   res.send("Insight Ventures API is running!");
+});
+app.get("/box/login", (req, res) => {
+  var authorize_url = sdk.getAuthorizeURL({
+    response_type: "code",
+    redirect_uri: "http://localhost:3000/box/callback",
+  });
+  res.status(200).json({ authorize_url });
+});
+app.get("/box/callback", (req, res) => {
+  const { code, state } = req.query;
+
+  sdk.getTokensAuthorizationCodeGrant(code, null, function (err, tokenInfo) {
+    console.debug("🚀 ~ tokenInfo:", tokenInfo);
+    res.send(`
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <title>Box Auth Success</title>
+    </head>
+    <body>
+      <script>
+        (function () {
+          // Debug: show we’re in the popup
+          console.log("🔑 Box popup loaded");
+
+          const tokenInfo = {
+            accessToken: "${tokenInfo.accessToken}",
+            refreshToken: "${tokenInfo.refreshToken || ""}",
+            accessTokenTTLMS: ${tokenInfo.accessTokenTTLMS || 0},
+            acquiredAtMS: ${tokenInfo.acquiredAtMS || Date.now()}
+          };
+
+          const targetOrigin = "http://localhost:8100"; // Make sure your main app runs on this
+
+          if (window.opener && !window.opener.closed) {
+            console.log("✅ Sending postMessage to opener");
+            window.opener.postMessage({
+              type: "box-auth-success",
+              payload: tokenInfo
+            }, targetOrigin);
+          } else {
+            console.warn("❌ No opener window found");
+          }
+
+          // Close after 1 second to ensure message is sent
+          // setTimeout(() => {
+          //   window.close();
+          // }, 1000);
+        })();
+      </script>
+      <p>Authentication successful. You can close this window.</p>
+    </body>
+  </html>
+`);
+  });
 });
 
 // Use the property routes, prefixed with /api/properties
@@ -42,7 +104,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/box", boxRoutes); // 👈 2. Use the new routes with the '/api/box' prefix
 app.use("/api/financials", financials); // 👈 2. Use the new routes with the '/api/box' prefix
-
+app.use('/api/reminders', reminderRoutes);
 // === Database Connection & Server Start ===
 sequelize
   .authenticate()
@@ -50,7 +112,7 @@ sequelize
     console.log("✅ Database connection has been established successfully.");
     // Synchronize models (optional, good for development)
     // Use { alter: true } to non-destructively update tables
-    return sequelize.sync({ alter: false });
+    return sequelize.sync({ alter: true });
   })
   .then(() => {
     app.listen(PORT, () => {

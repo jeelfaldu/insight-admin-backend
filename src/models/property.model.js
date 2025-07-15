@@ -44,12 +44,12 @@ const Property = sequelize.define("Property", {
 
   // === Key Metrics Tab ===
   totalSqft: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.FLOAT,
     allowNull: true,
     defaultValue: 0,
   },
   usableSqft: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.FLOAT,
     allowNull: true,
     defaultValue: 0,
   },

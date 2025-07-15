@@ -1,105 +1,94 @@
-// src/controllers/box.controller.js
 const axios = require("axios");
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
-const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const { PutObjectCommand } = require("@aws-sdk/client-s3");
 const { s3Client } = require("../middleware/s3.middleware");
-// Assuming you have your S3 upload middleware configured
-// const s3 = new S3Client({
-//   region: process.env.AWS_REGION,
-//   credentials: {
-//     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-//     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-//   },
-// });
 
 const BOX_API_URL = "https://api.box.com/2.0";
-const BOX_AUTH_HEADER = {
-  Authorization: `Bearer ${process.env.BOX_ACCESS_TOKEN}`,
-};
+const BOX_AUTH_HEADER = (token) => ({
+  Authorization: `Bearer ${token}`,
+});
 
 // GET /api/box/folders/:id/items
 exports.getFolderItems = async (req, res) => {
   const folderId = req.params.id || "0"; // Default to root folder
+  const boxToken = req.header("boxToken");
+  console.debug("🚀 ~ exports.getFolderItems= ~ boxToken:", boxToken);
+
   try {
     const response = await axios.get(
       `${BOX_API_URL}/folders/${folderId}/items`,
       {
-        headers: BOX_AUTH_HEADER,
+        headers: BOX_AUTH_HEADER(boxToken),
         params: { fields: "id,type,name,size" }, // Request only the fields we need
       }
     );
     res.status(200).json(response.data.entries);
   } catch (error) {
-    console.error("Box API error:", error.response?.data || error.message);
-    res.status(500).json({ message: "Failed to fetch items from Box" });
+    console.debug("🚀 ~ exports.getFolderItems= ~ error:", error);
+    res.status(500).json({
+      message: "Failed to fetch items from Box",
+      unauthorized: error.response.statusText === "Unauthorized",
+    });
   }
+};
+
+const streamToBuffer = async (stream) => {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    stream.on("data", (chunk) => chunks.push(chunk));
+    stream.on("end", () => resolve(Buffer.concat(chunks)));
+    stream.on("error", reject);
+  });
 };
 
 // POST /api/box/transfer-to-s3
 exports.transferToS3 = async (req, res) => {
   const { fileId, fileName } = req.body;
-  if (!fileId || !fileName)
+  const boxToken = req.header("boxToken");
+
+  if (!fileId || !fileName) {
     return res
       .status(400)
       .json({ message: "fileId and fileName are required" });
+  }
 
   try {
-    const fileUrl = `${BOX_API_URL}/files/${fileId}?fields=shared_link`;
-    // 1. Download file content from Box
-    const fileContentResponse = await axios.put(
-      fileUrl,
-      {
-        shared_link: {
-          access: "open",
-          password: null,
-          unshared_at: getFormattedTimeAfter5Min(),
-          permissions: {
-            can_download: true,
-            can_edit: false,
-          },
-        },
-      },
-      {
-        headers: BOX_AUTH_HEADER,
-      }
-    );
-    const downloadedFileLink =
-      fileContentResponse.data.shared_link.download_url;
-
-    const fileContentResponse2 = await axios.get(downloadedFileLink, {
-      headers: BOX_AUTH_HEADER,
-      responseType: "arraybuffer", // Get the raw file data
+    const findfile = `${BOX_API_URL}/files/${fileId}/content`;
+    const findfileUrlRes = await axios.get(findfile, {
+      headers: BOX_AUTH_HEADER(boxToken),
+      responseType: "stream",
     });
 
-    // 2. Upload that content to S3
-    const s3Key = `properties/from-box-${Date.now()}-${fileName}`;
+    // Convert stream to buffer
+    const buffer = await streamToBuffer(findfileUrlRes.data);
+
+    // Prepare S3 upload
+    const newfileName = `from-box-${Date.now()}-${fileName}`;
+    const s3Key = `properties/from-box-${newfileName}`;
+
     const s3Params = {
       Bucket: process.env.AWS_S3_BUCKET_NAME,
       Key: s3Key,
-      Body: fileContentResponse2.data,
-      ContentType: fileContentResponse2.headers["content-type"],
+      Body: buffer,
+      ContentType:
+        findfileUrlRes.headers["content-type"] || "application/octet-stream",
+      ContentLength: buffer.length,
     };
 
     await s3Client.send(new PutObjectCommand(s3Params));
 
-    // Construct the public URL for the newly uploaded S3 object
-    const fileUrls = req.files.map(
-      (file) =>
-        `https://hamfvokuwdzthgkgisxb.supabase.co/storage/v1/object/public/insight.admin.dev/${s3Key}`
-    );
+    const fileUrl = `https://hamfvokuwdzthgkgisxb.supabase.co/storage/v1/object/public/insight.admin.dev/${s3Key}`;
+
     res.status(200).json({
       message: "File transferred successfully",
-      url: fileUrls,
-      name: fileName,
-      size: fileContentResponse.data.length,
+      url: fileUrl,
+      name: newfileName,
+      size: buffer.length,
     });
   } catch (error) {
     console.error(
       "Box S3 transfer error:",
       error.response?.data || error.message
     );
-    console.debug(" fileContentResponse:", error.response?.data.context_info);
-
     res.status(500).json({ message: "Failed to transfer file to S3" });
   }
 };
@@ -110,6 +99,7 @@ exports.transferToS3 = async (req, res) => {
  */
 exports.searchFiles = async (req, res) => {
   const { query } = req.query;
+  const boxToken = req.header("boxToken");
 
   if (!query) {
     return res
@@ -119,7 +109,7 @@ exports.searchFiles = async (req, res) => {
 
   try {
     const response = await axios.get(`${BOX_API_URL}/search`, {
-      headers: BOX_AUTH_HEADER,
+      headers: BOX_AUTH_HEADER(boxToken),
       params: {
         query: query,
         // We can add more search filters here if needed later

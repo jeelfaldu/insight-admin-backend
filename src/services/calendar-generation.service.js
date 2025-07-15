@@ -6,6 +6,7 @@ const Tenant = require("../models/tenant.model");
 const CalendarEvent = require("../models/calendar-event.model");
 const eventColors = require("../config/event-colors"); // 👈 Import colors
 const sequelize = require("../config/database");
+const CustomReminder = require("../models/custom-reminder.model");
 
 // --- This service now contains "Transformers" ---
 
@@ -111,7 +112,8 @@ const generateAllCalendarEvents = async () => {
     await Promise.all(
       allEventsToUpsert.map((eventData) =>
         CalendarEvent.upsert(eventData, { transaction })
-      )
+      ),
+      generateCustomReminderEvents()
     );
     await transaction.commit();
     console.log(`Upserted ${allEventsToUpsert.length} total events.`);
@@ -154,6 +156,87 @@ async function pruneOrphanedEvents() {
     await CalendarEvent.destroy({ where: { id: eventsToDelete } });
     console.log(`Deleted ${eventsToDelete.length} orphaned events.`);
   }
+}
+
+// Helper function to map our weekday strings to rrule constants
+const mapDaysToRRule = (days) => {
+  if (!days) return null;
+  const dayMap = {
+    SU: RRule.SU,
+    MO: RRule.MO,
+    TU: RRule.TU,
+    WE: RRule.WE,
+    TH: RRule.TH,
+    FR: RRule.FR,
+    SA: RRule.SA,
+  };
+  return days.map((day) => dayMap[day]);
+};
+
+// 👇 This new function generates events from our custom reminders table
+async function generateCustomReminderEvents() {
+  const reminders = await CustomReminder.findAll();
+  const eventsToCreate = [];
+
+  reminders.forEach((reminder) => {
+    // If the reminder has no recurrence rule, create a single event
+    if (!reminder.recurrence) {
+      eventsToCreate.push({
+        title: `Reminder: ${reminder.title}`,
+        startDate: reminder.startDate,
+        endDate: reminder.startDate,
+        color: eventColors[reminder.color] || eventColors.purple,
+        sourceId: reminder.id,
+        sourceType: "Custom Reminder",
+        sourceSignature: `reminder-single-${reminder.id}`,
+      });
+      return; // Move to the next reminder
+    }
+
+    // --- If it IS recurring, use RRule to generate instances ---
+    const ruleOptions = {
+      freq: RRule[reminder.recurrence.frequency.toUpperCase()],
+      interval: reminder.recurrence.interval || 1,
+      dtstart: new Date(reminder.startDate),
+      until: reminder.recurrence.endDate
+        ? new Date(reminder.recurrence.endDate)
+        : null,
+      byweekday: mapDaysToRRule(reminder.recurrence.byDay),
+      // bymonthday for monthly repeats, etc. would be added here
+    };
+
+    const rule = new RRule(ruleOptions);
+
+    // Generate occurrences for the next year for performance
+    const oneYearFromNow = new Date();
+    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+
+    const occurrences = rule.between(new Date(), oneYearFromNow);
+
+    occurrences.forEach((date) => {
+      eventsToCreate.push({
+        title: `Reminder: ${reminder.title}`,
+        startDate: date,
+        endDate: date,
+        color: eventColors[reminder.color] || eventColors.purple,
+        sourceId: reminder.id,
+        sourceType: "Custom Reminder",
+        // Create a unique signature for each *instance* of a recurring event
+        sourceSignature: `reminder-recurring-${reminder.id}-${date
+          .toISOString()
+          .slice(0, 10)}`,
+      });
+    });
+  });
+
+  if (eventsToCreate.length > 0) {
+    // Use Promise.all to run all upsert operations concurrently
+    const upsertPromises = eventsToCreate.map((event) =>
+      CalendarEvent.upsert(event)
+    );
+    await Promise.all(upsertPromises);
+  }
+  console.log(`Upserted ${eventsToCreate.length} custom reminder events.`);
 }
 
 module.exports = { generateAllCalendarEvents };
