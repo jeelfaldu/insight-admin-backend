@@ -65,7 +65,7 @@ app.get("/box/callback", (req, res) => {
             acquiredAtMS: ${tokenInfo.acquiredAtMS || Date.now()}
           };
 
-          const targetOrigin = "http://localhost:8100"; // Make sure your main app runs on this
+          const targetOrigin = "https://insight-admin.vercel.app/"; // Make sure your main app runs on this
 
           if (window.opener && !window.opener.closed) {
             console.log("✅ Sending postMessage to opener");
@@ -78,9 +78,9 @@ app.get("/box/callback", (req, res) => {
           }
 
           // Close after 1 second to ensure message is sent
-          // setTimeout(() => {
-          //   window.close();
-          // }, 1000);
+          setTimeout(() => {
+            window.close();
+          }, 1000);
         })();
       </script>
       <p>Authentication successful. You can close this window.</p>
