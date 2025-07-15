@@ -21,8 +21,8 @@ const PORT = process.env.PORT || 3000;
 
 var BoxSDK = require("box-node-sdk");
 var sdk = new BoxSDK({
-  clientID: "ojrt9rljip48t2dhld5iofl1tl0oetz1",
-  clientSecret: "6KPVXyMihTAAnVNLsGGacaqL7exP55gq",
+  clientID: "3hj4shnttfw7uvq0hdhgx4i1byb69hjs",
+  clientSecret: "68995UMjYJSvIFoVLrFO4jDWgFPXVxBE",
 });
 
 // === Middleware ===
@@ -37,7 +37,7 @@ app.get("/", (req, res) => {
 app.get("/box/login", (req, res) => {
   var authorize_url = sdk.getAuthorizeURL({
     response_type: "code",
-    redirect_uri: "http://localhost:3000/box/callback",
+    redirect_uri: "https://insight-admin-backend.onrender.com/box/callback",
   });
   res.status(200).json({ authorize_url });
 });

@@ -38,5 +38,49 @@ exports.getAllLeases = async (req, res) => {
   }
 };
 
-// ... You would add getLeaseById, updateLease, and deleteLease methods here
-//     following the same pattern as the other controllers.
+// GET /api/leases/:id - Get a single lease by ID
+exports.getLeaseById = async (req, res) => {
+  try {
+    const lease = await Lease.findByPk(req.params.id);
+    if (!lease) {
+      return res.status(404).json({ message: "Lease not found" });
+    }
+    res.status(200).json(lease);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching lease", error: error.message });
+  }
+};
+
+// PUT /api/leases/:id - Update a lease
+exports.updateLease = async (req, res) => {
+  try {
+    const lease = await Lease.findByPk(req.params.id);
+    if (!lease) {
+      return res.status(404).json({ message: "Lease not found" });
+    }
+    const updatedLease = await lease.update(req.body);
+    res.status(200).json(updatedLease);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error updating lease", error: error.message });
+  }
+};
+
+// DELETE /api/leases/:id - Delete a lease
+exports.deleteLease = async (req, res) => {
+  try {
+    const lease = await Lease.findByPk(req.params.id);
+    if (!lease) {
+      return res.status(404).json({ message: "Lease not found" });
+    }
+    await lease.destroy();
+    res.status(204).send(); // No content
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error deleting lease", error: error.message });
+  }
+};

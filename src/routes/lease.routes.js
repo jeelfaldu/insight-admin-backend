@@ -17,6 +17,18 @@ router.get("/", leaseController.getAllLeases);
 // POST a new lease
 router.post("/", leaseValidationRules(), validate, leaseController.createLease);
 
-// ... (Add GET by ID, PUT, DELETE routes here as needed)
+// GET a single lease by ID
+router.get("/:id", leaseController.getLeaseById);
+
+// PUT to update a lease by ID
+router.put(
+  "/:id",
+  leaseValidationRules(),
+  validate,
+  leaseController.updateLease
+);
+
+// DELETE a lease by ID
+router.delete("/:id", leaseController.deleteLease);
 
 module.exports = router;
