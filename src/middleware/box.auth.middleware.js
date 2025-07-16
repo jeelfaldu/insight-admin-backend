@@ -37,7 +37,6 @@ const boxAuthMiddleware = async (req, res, next) => {
         });
 
     } catch (error) {
-        console.debug("🚀 ~ boxAuthMiddleware ~ error:", error);
         // If token generation itself fails, block the request.
         return res.status(503).json({ message: "Could not authenticate with Box service." });
     }

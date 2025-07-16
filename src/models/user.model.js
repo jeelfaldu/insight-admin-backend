@@ -1,4 +1,3 @@
-// src/models/user.model.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 const bcrypt = require("bcryptjs");
@@ -20,7 +19,6 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    // 👇 ADD THESE NEW FIELDS FOR PASSWORD RESET
     passwordResetToken: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -36,7 +34,6 @@ const User = sequelize.define(
     },
   },
   {
-    // Use "hooks" to automatically perform an action before saving
     hooks: {
       beforeCreate: async (user) => {
         if (user.password) {

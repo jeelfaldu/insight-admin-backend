@@ -14,7 +14,6 @@ exports.getAttachments = async (req, res) => {
     });
     res.status(200).json(attachments);
   } catch (error) {
-    console.debug(" exports.getAttachments= ~ error:", error);
     res.status(500).json({ message: "Error fetching attachments" });
   }
 };

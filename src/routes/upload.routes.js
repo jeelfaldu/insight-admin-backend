@@ -40,7 +40,6 @@ router.delete(
       if (!filename) {
         return res.status(400).json({ error: "Filename is required." });
       }
-      console.debug("Deleting file:", filename);
       await uploadMiddleware.deleteSingleFile(
         process.env.AWS_S3_BUCKET_NAME,
         filename

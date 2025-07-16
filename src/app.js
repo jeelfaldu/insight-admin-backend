@@ -45,7 +45,6 @@ app.get("/box/callback", (req, res) => {
   const { code, state } = req.query;
 
   sdk.getTokensAuthorizationCodeGrant(code, null, function (err, tokenInfo) {
-    console.debug("🚀 ~ tokenInfo:", tokenInfo);
     res.send(`
   <!DOCTYPE html>
   <html>
@@ -112,7 +111,7 @@ sequelize
     console.log("✅ Database connection has been established successfully.");
     // Synchronize models (optional, good for development)
     // Use { alter: true } to non-destructively update tables
-    return sequelize.sync({ alter: true });
+    return sequelize.sync({ alter: false });
   })
   .then(() => {
     app.listen(PORT, () => {

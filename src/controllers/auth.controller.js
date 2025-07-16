@@ -20,7 +20,6 @@ exports.register = async (req, res) => {
       .status(201)
       .json({ message: "User created successfully", userId: user.id });
   } catch (error) {
-    console.debug(" exports.register= ~ error:", error);
     res
       .status(500)
       .json({ message: "Error registering new user", error: error.message });
@@ -110,7 +109,6 @@ exports.forgotPassword = async (req, res) => {
         "If an account with that email exists, a password reset link has been sent.",
     });
   } catch (error) {
-    console.debug(" exports.forgotPassword= ~ error:", error);
     // Generic error
     res.status(500).json({ message: "An error occurred." });
   }
@@ -166,7 +164,6 @@ exports.resetPassword = async (req, res) => {
       user: { id: user.id, username: user.username, role: user.role },
     });
   } catch (error) {
-    console.debug(" exports.resetPassword= ~ error:", error);
     res.status(500).json({ message: "Error resetting password" });
   }
 };

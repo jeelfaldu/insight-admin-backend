@@ -1,4 +1,3 @@
-// src/controllers/dashboard.controller.js
 const { Op, fn, col } = require("sequelize");
 const CalendarEvent = require("../models/calendar-event.model");
 const {
@@ -7,6 +6,7 @@ const {
   subDays,
   subMonths,
   endOfToday,
+  endOfMonth,
 } = require("date-fns");
 const Property = require("../models/property.model");
 const Project = require("../models/project.model");
@@ -153,9 +153,7 @@ exports.getSummaryData = async (req, res) => {
       const property = allPropertiesWithUnits.find(
         (p) => p.id + "" === lease.propertyId + ""
       );
-      console.debug("🚀 ~ activeLeases.forEach ~ property:", property);
       const unit = property?.units.find((u) => u.id + "" === lease.unitId + "");
-      console.debug("🚀 ~ activeLeases.forEach ~ unit:", unit);
 
       if (property && unit) {
         const type = property.type;
@@ -269,7 +267,6 @@ exports.getChartData = async (req, res) => {
       billedData,
     });
   } catch (error) {
-    console.debug(" exports.getChartData= ~ error:", error);
     res
       .status(500)
       .json({ message: "Error fetching chart data", error: error.message });
@@ -337,3 +334,82 @@ function processLeasesIntoMonthlyData(leases) {
     value: monthlyBilled[monthKey],
   }));
 }
+
+/**
+ * GET /api/dashboard/bar-chart-data?propertyIds=...&tenantId=...
+ * Aggregates rent and camit data for the current and previous month
+ * to be displayed in a bar chart.
+ */
+exports.getBarChartData = async (req, res) => {
+  try {
+    const { propertyIds, tenantId } = req.query;
+
+    const today = new Date();
+    const currentMonthStart = startOfMonth(today);
+    const prevMonthStart = startOfMonth(subMonths(today, 1));
+    const prevMonthEnd = endOfMonth(subMonths(today, 1));
+
+    const leaseWhereClause = {};
+    if (tenantId) {
+      leaseWhereClause.tenantId = tenantId;
+    }
+    if (propertyIds) {
+      leaseWhereClause.propertyId = { [Op.in]: propertyIds.split(",") };
+    }
+
+    const leases = await Lease.findAll({ where: leaseWhereClause });
+    const properties = await Property.findAll({
+      attributes: ["id", "name", "entityName"],
+      where: propertyIds ? { id: { [Op.in]: propertyIds.split(",") } } : {},
+    });
+
+    const propertyMap = new Map(
+      properties.map((p) => [p.id.toString(), p.name || p.entityName])
+    );
+    console.debug("🚀 ~ exports.getBarChartData= ~ propertyMap:", propertyMap);
+    const chartData = {
+      labels: [],
+      currentMonthData: [],
+      previousMonthData: [],
+    };
+
+    // Logic to aggregate data
+    const monthlyTotalsByProp = {}; // { propId: { current: 100, previous: 90 } }
+
+    leases.forEach((lease) => {
+      if (!monthlyTotalsByProp[lease.propertyId]) {
+        monthlyTotalsByProp[lease.propertyId] = { current: 0, previous: 0 };
+      }
+
+      // Calculate current month's total billed
+      const allCharges = [
+        ...(lease.rentSchedule || []),
+        // ...(lease.camitSchedule || []),
+      ];
+      allCharges.forEach((charge) => {
+        const startDate = new Date(charge.startDate);
+        const endDate = new Date(charge.endDate);
+        if (currentMonthStart >= startDate && currentMonthStart <= endDate) {
+          monthlyTotalsByProp[lease.propertyId].current += charge.monthlyAmount;
+        }
+        if (prevMonthStart >= startDate && prevMonthStart <= endDate) {
+          monthlyTotalsByProp[lease.propertyId].previous +=
+            charge.monthlyAmount;
+        }
+      });
+    });
+
+    // Format for Chart.js
+    for (const propId in monthlyTotalsByProp) {
+      const log = propertyMap.has(propId);
+      chartData.labels.push(propertyMap.get(propId) || `Property #${propId}`);
+      chartData.currentMonthData.push(monthlyTotalsByProp[propId].current);
+      chartData.previousMonthData.push(monthlyTotalsByProp[propId].previous);
+    }
+
+    res.status(200).json(chartData);
+  } catch (error) {
+    console.error("Error fetching bar chart data:", error);
+    res.status(500).json({ message: "Error fetching bar chart data" });
+  }
+};

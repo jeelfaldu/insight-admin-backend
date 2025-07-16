@@ -11,7 +11,6 @@ const BOX_AUTH_HEADER = (token) => ({
 exports.getFolderItems = async (req, res) => {
   const folderId = req.params.id || "0"; // Default to root folder
   const boxToken = req.header("boxToken");
-  console.debug("🚀 ~ exports.getFolderItems= ~ boxToken:", boxToken);
 
   try {
     const response = await axios.get(
@@ -23,7 +22,6 @@ exports.getFolderItems = async (req, res) => {
     );
     res.status(200).json(response.data.entries);
   } catch (error) {
-    console.debug("🚀 ~ exports.getFolderItems= ~ error:", error);
     res.status(500).json({
       message: "Failed to fetch items from Box",
       unauthorized: error.response.statusText === "Unauthorized",

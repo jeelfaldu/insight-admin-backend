@@ -10,5 +10,6 @@ router.use(authMiddleware);
 router.get('/alerts', dashboardController.getDashboardAlerts);
 router.get('/summary', dashboardController.getSummaryData);
 router.get('/chart-data', dashboardController.getChartData);
+router.get('/bar-chart-data', dashboardController.getBarChartData);
 
 module.exports = router;
