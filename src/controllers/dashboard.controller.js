@@ -169,6 +169,16 @@ exports.getSummaryData = async (req, res) => {
       value: occupancyByType[key],
     }));
 
+    let totalUnitCount = 0;
+    allPropertiesWithUnits.forEach((p) => {
+      // Safely add the number of units from each property
+      totalUnitCount += p.units ? p.units.length : 0;
+    });
+
+    const occupiedUnitCount = activeLeases.length;
+    const occupancyRate2 =
+      totalUnitCount > 0 ? (occupiedUnitCount / totalUnitCount) * 100 : 0;
+
     // --- Step 3: Construct the final JSON response object ---
     const summaryData = {
       totalProperties: {
@@ -181,6 +191,8 @@ exports.getSummaryData = async (req, res) => {
         trend: "+1.5% from last month", // Placeholder: This requires more complex historical data
         trendDirection: "up",
       },
+      totalUnits: totalUnitCount,
+      occupiedUnits: occupiedUnitCount,
       activeProjects: {
         value: activeProjectsCount,
         trend: "No change", // Placeholder
@@ -366,7 +378,6 @@ exports.getBarChartData = async (req, res) => {
     const propertyMap = new Map(
       properties.map((p) => [p.id.toString(), p.name || p.entityName])
     );
-    console.debug("🚀 ~ exports.getBarChartData= ~ propertyMap:", propertyMap);
     const chartData = {
       labels: [],
       currentMonthData: [],
@@ -412,4 +423,73 @@ exports.getBarChartData = async (req, res) => {
     console.error("Error fetching bar chart data:", error);
     res.status(500).json({ message: "Error fetching bar chart data" });
   }
+};
+
+exports.getVacantUnits = async (req, res) => {
+  try {
+    const properties = await Property.findAll({
+      attributes: ["id", "name", "entityName", "address", "units"],
+    });
+
+    const vacantUnits = [];
+
+    properties.forEach((prop) => {
+      if (prop.units && Array.isArray(prop.units)) {
+        prop.units.forEach((unit, index) => {
+          // Check the status of each unit
+          if (unit.status === "Unoccupied") {
+            // If it's unoccupied, add it to our list with parent property info
+            vacantUnits.push({
+              propertyId: prop.id,
+              propertyName: prop.name || prop.entityName,
+              propertyAddress: `${prop.address.street}, ${prop.address.city}`,
+              unitName: unit.name || `Unit #${index + 1}`,
+              unitSqft: unit.sqft,
+              // In a real system, rent would come from the unit or a "market rent" field
+              // For now, we'll pull from the first lease charge as a placeholder.
+              unitRent: unit.rent || 0,
+              unitCamit: 0, // Placeholder, as CAMIT is on the lease level
+            });
+          }
+        });
+      }
+    });
+
+    res.status(200).json(vacantUnits);
+  } catch (error) {
+    console.error("Error fetching vacant units:", error);
+    res.status(500).json({ message: "Error fetching vacant units" });
+  }
+};
+exports.getPortfolioUnits = async (req, res) => {
+    try {
+        const [properties, leases] = await Promise.all([
+            Property.findAll({ attributes: ['id', 'name', 'entityName', 'address', 'units'] }),
+            Lease.findAll({ where: { endDate: { [Op.gte]: new Date() } } }) // Get all active leases
+        ]);
+        
+        const allUnits = [];
+        const activeLeaseMap = new Map(leases.map(l => [l.unitId, l]));
+
+        properties.forEach(prop => {
+            if (prop.units && Array.isArray(prop.units)) {
+                prop.units.forEach((unit, index) => {
+                    const lease = activeLeaseMap.get(unit.id);
+                    allUnits.push({
+                        status: lease ? 'Occupied' : 'Vacant', // Set the status here
+                        propertyId: prop.id,
+                        propertyName: prop.name || prop.entityName,
+                        propertyAddress: `${prop.address.street}, ${prop.address.city}`,
+                        unitName: unit.name || `Unit #${index + 1}`,
+                        unitSqft: unit.sqft,
+                        unitRent: lease ? lease.rentSchedule[0]?.monthlyAmount : 0, 
+                        unitCamit: lease ? lease.camitSchedule[0]?.monthlyAmount : 0
+                    });
+                });
+            }
+        });
+        res.status(200).json(allUnits);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching portfolio units' });
+    }
 };

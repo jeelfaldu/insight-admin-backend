@@ -110,14 +110,19 @@ const generateAllCalendarEvents = async () => {
   // Use a single transaction to perform all upserts for efficiency
   const transaction = await sequelize.transaction();
   try {
-    await Promise.all(
-      allEventsToUpsert.map((eventData) =>
-        CalendarEvent.upsert(eventData, { transaction })
-      ),
-      generateCustomReminderEvents()
-    );
+    if (allEventsToUpsert.length > 0) {
+      await Promise.all(
+        allEventsToUpsert.map((eventData) =>
+          CalendarEvent.upsert(eventData, { transaction })
+        )
+      );
+      console.log(`Upserted ${allEventsToUpsert.length} smart events.`);
+    }
+
+    // Now, handle custom reminders within the same transaction
+    await generateCustomReminderEvents(transaction);
+
     await transaction.commit();
-    console.log(`Upserted ${allEventsToUpsert.length} total events.`);
   } catch (error) {
     await transaction.rollback();
     console.error("Failed to upsert events, transaction rolled back.", error);
@@ -175,16 +180,21 @@ const mapDaysToRRule = (days) => {
 };
 
 // --- 👇 REWRITTEN GENERATOR FUNCTION 👇 ---
-async function generateCustomReminderEvents() {
-  const reminders = await CustomReminder.findAll();
-  const eventsToCreate = [];
+async function generateCustomReminderEvents(transaction) {
+  const reminders = await CustomReminder.findAll({ transaction });
+  const eventsToUpsert = [];
+  const signaturesToDelete = [];
 
-  reminders.forEach((reminder) => {
-    // If it's a non-recurring event, handle it simply.
-    if (!reminder.recurrence || !reminder.recurrence.frequency) {
+  for (const reminder of reminders) {
+    const isRecurring = reminder.recurrence && reminder.recurrence.frequency;
+
+    if (isRecurring) {
+      signaturesToDelete.push(`reminder-single-${reminder.id}`);
+    }
+
+    if (!isRecurring) {
       if (!reminder.isCompleted) {
-        // Only show non-completed single events
-        eventsToCreate.push({
+        eventsToUpsert.push({
           title: `Reminder: ${reminder.title}`,
           startDate: reminder.startDate,
           endDate: reminder.startDate,
@@ -195,40 +205,47 @@ async function generateCustomReminderEvents() {
           allDay: true,
         });
       }
-      return; // Done with this reminder, move to the next one.
+      continue;
     }
 
-    // --- If it IS recurring, build the rule ---
+    if (reminder.isCompleted) {
+      continue;
+    }
+
     const freq = mapFrequencyToRRule(reminder.recurrence.frequency);
-    // Safety check: if frequency is invalid, skip this reminder
     if (freq === undefined) {
       console.warn(
         `Skipping recurring reminder with invalid frequency: ${reminder.title}`
       );
-      return;
+      continue;
     }
 
-    const ruleOptions = {
-      freq: freq,
+    // RRule works with dates in UTC. Our start date is DATEONLY (YYYY-MM-DD).
+    // new Date('YYYY-MM-DD') correctly creates a date at midnight UTC.
+    const dtstart = new Date(reminder.startDate);
+    const until = reminder.recurrence.endDate
+      ? new Date(reminder.recurrence.endDate)
+      : null;
+
+    const rule = new RRule({
+      freq,
       interval: reminder.recurrence.interval || 1,
-      dtstart: new Date(reminder.startDate),
-      until: reminder.recurrence.endDate
-        ? new Date(reminder.recurrence.endDate)
-        : null,
+      dtstart,
+      until,
       byweekday: mapDaysToRRule(reminder.recurrence.byDay),
-    };
+    });
 
-    const rule = new RRule(ruleOptions);
+    // Define the generation window using UTC dates to match RRule behavior
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
 
-    // Generate occurrences between today and 1 year from now for performance.
-    const oneYearFromNow = new Date();
-    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+    const oneYearFromNow = new Date(today);
+    oneYearFromNow.setUTCFullYear(oneYearFromNow.getUTCFullYear() + 1);
 
-    const occurrences = rule.between(new Date(), oneYearFromNow);
+    const occurrences = rule.between(today, oneYearFromNow, true);
 
-    // Create a calendar event for each generated date.
     occurrences.forEach((date) => {
-      eventsToCreate.push({
+      eventsToUpsert.push({
         title: `Reminder: ${reminder.title}`,
         startDate: date,
         endDate: date,
@@ -239,18 +256,27 @@ async function generateCustomReminderEvents() {
           .toISOString()
           .slice(0, 10)}`,
         allDay: true,
-        // We can also pass meta about the specific occurrence
         meta: { originalStartDate: reminder.startDate },
       });
     });
-  });
+  }
 
-  if (eventsToCreate.length > 0) {
-    await Promise.all(
-      eventsToCreate.map((event) => CalendarEvent.upsert(event))
+  if (signaturesToDelete.length > 0) {
+    await CalendarEvent.destroy({
+      where: { sourceSignature: signaturesToDelete },
+      transaction,
+    });
+    console.log(
+      `Cleaned up ${signaturesToDelete.length} orphaned single reminder events.`
     );
   }
-  console.log(`Upserted ${eventsToCreate.length} custom reminder events.`);
+
+  if (eventsToUpsert.length > 0) {
+    await Promise.all(
+      eventsToUpsert.map((event) => CalendarEvent.upsert(event, { transaction }))
+    );
+    console.log(`Upserted ${eventsToUpsert.length} custom reminder events.`);
+  }
 }
 // --- 👇 NEW, ROBUST HELPER FUNCTION 👇 ---
 /**

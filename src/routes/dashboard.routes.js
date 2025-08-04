@@ -11,5 +11,7 @@ router.get('/alerts', dashboardController.getDashboardAlerts);
 router.get('/summary', dashboardController.getSummaryData);
 router.get('/chart-data', dashboardController.getChartData);
 router.get('/bar-chart-data', dashboardController.getBarChartData);
+router.get('/vacant-units', dashboardController.getVacantUnits);
+router.get('/portfolio-units', dashboardController.getPortfolioUnits);
 
 module.exports = router;
