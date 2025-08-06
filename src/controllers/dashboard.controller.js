@@ -19,6 +19,7 @@ const {
   isBefore,
   isEqual,
 } = require("date-fns"); // 👈 Add new imports
+const Tenant = require("../models/tenant.model");
 
 // GET /api/dashboard/alerts
 exports.getDashboardAlerts = async (req, res) => {
@@ -220,15 +221,88 @@ exports.getChartData = async (req, res) => {
     const propertyIds = req.query.propertyIds
       ? req.query.propertyIds.split(",")
       : null;
+
+      
     const timePeriod = req.query.timePeriod || "6m"; // Default to last 6 months
 
     // --- 2. Define the date range based on the time period ---
     let startDate;
-    const endDate = endOfToday();
-    if (timePeriod === "12m") startDate = subMonths(endDate, 12);
-    else if (timePeriod === "ytd")
+    let endDate = endOfToday();
+
+    if (timePeriod === "custom") {
+      if (!req.query.startDate || !req.query.endDate) {
+        return res.status(400).json({
+          message:
+            "For custom time periods, please provide a startDate and endDate.",
+        });
+      }
+      startDate = new Date(req.query.startDate);
+      endDate = new Date(req.query.endDate);
+    } else if (timePeriod === "all") {
+      // Dynamically determine the earliest date from existing data
+      const [earliestLease, earliestRentRoll] = await Promise.all([
+        Lease.findOne({
+          attributes: [[fn("min", col("startDate")), "minDate"]],
+          raw: true,
+        }),
+        RentRollImport.findOne({
+          attributes: [[fn("min", col("lastPaymentDate")), "minDate"]],
+          raw: true,
+        }),
+      ]);
+
+      const minLeaseDate = earliestLease?.minDate
+        ? new Date(earliestLease.minDate)
+        : null;
+      const minRentRollDate = earliestRentRoll?.minDate
+        ? new Date(earliestRentRoll.minDate)
+        : null;
+
+      if (minLeaseDate && minRentRollDate) {
+        startDate = new Date(Math.min(minLeaseDate.getTime(), minRentRollDate.getTime()));
+      } else if (minLeaseDate) {
+        startDate = minLeaseDate;
+      } else if (minRentRollDate) {
+        startDate = minRentRollDate;
+      } else {
+        startDate = new Date(0); // Fallback to Unix epoch if no data exists
+      }
+
+      // Dynamically determine the latest date from existing data
+      const [latestLease, latestRentRoll] = await Promise.all([
+        Lease.findOne({
+          attributes: [[fn("max", col("endDate")), "maxDate"]],
+          raw: true,
+        }),
+        RentRollImport.findOne({
+          attributes: [[fn("max", col("lastPaymentDate")), "maxDate"]],
+          raw: true,
+        }),
+      ]);
+
+      const maxLeaseDate = latestLease?.maxDate
+        ? new Date(latestLease.maxDate)
+        : null;
+      const maxRentRollDate = latestRentRoll?.maxDate
+        ? new Date(latestRentRoll.maxDate)
+        : null;
+
+      if (maxLeaseDate && maxRentRollDate) {
+        endDate = new Date(Math.max(maxLeaseDate.getTime(), maxRentRollDate.getTime()));
+      } else if (maxLeaseDate) {
+        endDate = maxLeaseDate;
+      } else if (maxRentRollDate) {
+        endDate = maxRentRollDate;
+      } else {
+        endDate = endOfToday(); // Fallback to end of today if no data exists
+      }
+    } else if (timePeriod === "12m") {
+      startDate = subMonths(endDate, 12);
+    } else if (timePeriod === "ytd") {
       startDate = new Date(endDate.getFullYear(), 0, 1); // Year to date
-    else startDate = subMonths(endDate, 6); // Default: last 6 months
+    } else {
+      startDate = subMonths(endDate, 6); // Default: last 6 months
+    }
 
     // --- 3. Build WHERE clauses for our database queries ---
     const leaseWhereClause = {
@@ -243,30 +317,25 @@ exports.getChartData = async (req, res) => {
       receivableWhereClause.propertyId = { [Op.in]: propertyIds };
     }
 
-    const [
-      // 👇 THIS IS THE NEW, EFFICIENT QUERY
-      receivables,
-      leases,
-    ] = await Promise.all([
+    const [receivables, leases] = await Promise.all([
       RentRollImport.findAll({
         attributes: [
           "month",
-          // fn('sum', col('...')) is how you do SUM(...) in Sequelize
           [fn("sum", col("amountReceivable")), "totalReceivable"],
         ],
         where: receivableWhereClause,
         group: ["month"],
         order: [["month", "ASC"]],
-        raw: true, // Get a plain JSON object, not a Sequelize instance
+        raw: true,
       }),
       Lease.findAll({ where: leaseWhereClause }),
     ]);
 
-    // ... (Processing for Billed Data from Leases is unchanged) ...
+    // Process Billed Data from Leases, now passing the date range
     const billedData = processLeasesIntoMonthlyData(leases, {
       start: startDate,
       end: endDate,
-    }); // Assume this is a helper function now
+    });
 
     // Format Receivable Data
     const receivableData = receivables.map((item) => ({
@@ -289,34 +358,44 @@ exports.getChartData = async (req, res) => {
  * A helper function to process an array of Lease objects into monthly aggregated data.
  * It calculates the total billed rent and CAMIT for each month based on lease schedules.
  * @param {Array} leases - An array of Lease objects from the database.
+ * @param {object} dateRange - An object containing start and end dates for filtering.
+ * @param {Date} dateRange.start - The start date of the period.
+ * @param {Date} dateRange.end - The end date of the period.
  * @returns {Array<{name: string, value: number}>} An array of ChartDataPoint objects.
  */
-function processLeasesIntoMonthlyData(leases) {
-  // Use an object as a temporary map to store aggregated values for each month.
-  // e.g., { "2024-05": 50000, "2024-06": 62000 }
+function processLeasesIntoMonthlyData(leases, dateRange) {
   const monthlyBilled = {};
 
-  if (!leases) {
+  if (!leases || !dateRange || !dateRange.start || !dateRange.end) {
     return [];
   }
 
-  // 1. Iterate through each lease from the database.
+  const filterStartDate = startOfMonth(dateRange.start);
+  const filterEndDate = startOfMonth(dateRange.end);
+
   leases.forEach((lease) => {
-    // 2. Combine the rent and CAMIT schedules into a single list of charges for this lease.
-    // The '|| []' is a safety check in case the arrays are null.
     const allCharges = [...(lease.rentSchedule || [])];
 
-    // 3. Iterate through each charge period within the lease.
     allCharges.forEach((charge) => {
       try {
-        let currentMonth = startOfMonth(new Date(charge.startDate));
-        const endDate = startOfMonth(new Date(charge.endDate));
+        let chargeStart = startOfMonth(new Date(charge.startDate));
+        const chargeEnd = startOfMonth(new Date(charge.endDate));
 
-        // This is a manual loop that is much more reliable
-        // It continues as long as the current month is before or the same as the end month.
+        // Determine the effective start and end for this charge within the filter period
+        const effectiveStart = isBefore(chargeStart, filterStartDate)
+          ? filterStartDate
+          : chargeStart;
+        const effectiveEnd = isBefore(filterEndDate, chargeEnd)
+          ? filterEndDate
+          : chargeEnd;
+
+        let currentMonth = effectiveStart;
+
         while (
-          isBefore(currentMonth, endDate) ||
-          isEqual(currentMonth, endDate)
+          (isBefore(currentMonth, effectiveEnd) ||
+            isEqual(currentMonth, effectiveEnd)) &&
+          (isBefore(currentMonth, filterEndDate) ||
+            isEqual(currentMonth, filterEndDate))
         ) {
           const monthKey = format(currentMonth, "yyyy-MM");
 
@@ -326,11 +405,9 @@ function processLeasesIntoMonthlyData(leases) {
 
           monthlyBilled[monthKey] += charge.monthlyAmount;
 
-          // Move to the next month for the next iteration
           currentMonth = addMonths(currentMonth, 1);
         }
       } catch (e) {
-        // This catch block will handle any invalid date formats in the charge data.
         console.warn(
           "Skipping a charge with an invalid date range:",
           charge,
@@ -340,11 +417,25 @@ function processLeasesIntoMonthlyData(leases) {
     });
   });
 
-  // 6. Finally, convert our aggregated object into the simple array format the chart needs.
-  return Object.keys(monthlyBilled).map((monthKey) => ({
-    name: monthKey,
-    value: monthlyBilled[monthKey],
-  }));
+  // Ensure all months in the requested range are present, even if no data
+  let currentMonthInRange = startOfMonth(filterStartDate);
+  while (
+    isBefore(currentMonthInRange, filterEndDate) ||
+    isEqual(currentMonthInRange, filterEndDate)
+  ) {
+    const monthKey = format(currentMonthInRange, "yyyy-MM");
+    if (!monthlyBilled[monthKey]) {
+      monthlyBilled[monthKey] = 0;
+    }
+    currentMonthInRange = addMonths(currentMonthInRange, 1);
+  }
+
+  return Object.keys(monthlyBilled)
+    .sort() // Sort by month key to ensure chronological order
+    .map((monthKey) => ({
+      name: monthKey,
+      value: monthlyBilled[monthKey],
+    }));
 }
 
 /**
@@ -425,6 +516,11 @@ exports.getBarChartData = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/dashboard/portfolio-units
+ * Finds and returns a detailed list of ALL units, correctly joining
+ * tenant and lease data to provide a complete picture for the UI.
+ */
 exports.getVacantUnits = async (req, res) => {
   try {
     const properties = await Property.findAll({
@@ -462,34 +558,67 @@ exports.getVacantUnits = async (req, res) => {
   }
 };
 exports.getPortfolioUnits = async (req, res) => {
-    try {
-        const [properties, leases] = await Promise.all([
-            Property.findAll({ attributes: ['id', 'name', 'entityName', 'address', 'units'] }),
-            Lease.findAll({ where: { endDate: { [Op.gte]: new Date() } } }) // Get all active leases
-        ]);
-        
-        const allUnits = [];
-        const activeLeaseMap = new Map(leases.map(l => [l.unitId, l]));
+  try {
+    const [properties, activeLeases, allTenants] = await Promise.all([
+      Property.findAll({
+        attributes: ["id", "name", "entityName", "address", "units"],
+      }),
+      Lease.findAll({ where: { endDate: { [Op.gte]: new Date() } } }),
+      Tenant.findAll({ attributes: ["id", "name"] }),
+    ]);
 
-        properties.forEach(prop => {
-            if (prop.units && Array.isArray(prop.units)) {
-                prop.units.forEach((unit, index) => {
-                    const lease = activeLeaseMap.get(unit.id);
-                    allUnits.push({
-                        status: lease ? 'Occupied' : 'Vacant', // Set the status here
-                        propertyId: prop.id,
-                        propertyName: prop.name || prop.entityName,
-                        propertyAddress: `${prop.address.street}, ${prop.address.city}`,
-                        unitName: unit.name || `Unit #${index + 1}`,
-                        unitSqft: unit.sqft,
-                        unitRent: lease ? lease.rentSchedule[0]?.monthlyAmount : 0, 
-                        unitCamit: lease ? lease.camitSchedule[0]?.monthlyAmount : 0
-                    });
-                });
-            }
+    const allUnits = [];
+
+    // --- 👇 THIS IS THE CORRECTED PART 👇 ---
+
+    // Create efficient lookup maps, ensuring all keys are STRINGS.
+    const activeLeaseMap = new Map(
+      activeLeases.map((l) => [String(l.unitId), l])
+    );
+    const tenantMap = new Map(allTenants.map((t) => [String(t.id), t.name]));
+
+    properties.forEach((prop) => {
+      if (prop.units && Array.isArray(prop.units)) {
+        prop.units.forEach((unit, index) => {
+          // Make sure the key used for lookup is also a STRING
+          const lease = activeLeaseMap.get(String(unit.id));
+
+          let tenantId = null;
+          let tenantName = "VACANT"; // Default to VACANT
+
+          if (lease) {
+            // Make sure the key used for lookup is also a STRING
+            tenantId = lease.tenantId;
+            tenantName =
+              tenantMap.get(String(lease.tenantId)) || "Tenant Not Found";
+          }
+
+          allUnits.push({
+            status: lease ? "Occupied" : "Vacant",
+            tenantId: tenantId,
+            tenantName: tenantName,
+
+            propertyId: prop.id,
+            propertyName: prop.name || prop.entityName,
+            propertyAddress: `${prop.address.street}, ${prop.address.city}`,
+            unitId: unit.id,
+            unitName: unit.name || `Unit #${index + 1}`,
+            unitSqft: unit.sqft,
+            unitRent: lease ? lease.rentSchedule[0]?.monthlyAmount || 0 : 0,
+            unitCamit: lease ? lease.camitSchedule[0]?.monthlyAmount || 0 : 0,
+          });
         });
-        res.status(200).json(allUnits);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching portfolio units' });
-    }
+      }
+    });
+
+    res.status(200).json(allUnits);
+  } catch (error) {
+    console.error("Error fetching portfolio units:", error);
+    res
+      .status(500)
+      .json({
+        message: "Error fetching portfolio units",
+        error: error.message,
+      });
+  }
 };
