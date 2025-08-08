@@ -20,10 +20,50 @@ exports.getEvents = async (req, res) => {
         type: event.sourceType, // This is now 'Project Deadline', 'Lease Expiration', etc.
         url: event.url,
       },
+      isDone: event.isDone
     }));
 
     res.status(200).json(frontendEvents);
   } catch (error) {
     res.status(500).json({ message: "Error fetching calendar events" });
+  }
+};
+
+// PUT /api/calendar-events/:id/mark-done
+exports.markEventAsDone = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const event = await CalendarEvent.findByPk(id);
+
+    if (!event) {
+      return res.status(404).json({ message: "Calendar event not found" });
+    }
+
+    event.isDone = true;
+    await event.save();
+
+    res.status(200).json({ message: "Calendar event marked as done", event });
+  } catch (error) {
+    console.error("Error marking event as done:", error);
+    res.status(500).json({ message: "Error marking calendar event as done" });
+  }
+};
+
+// DELETE /api/calendar-events/:id
+exports.deleteEvent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const event = await CalendarEvent.findByPk(id);
+
+    if (!event) {
+      return res.status(404).json({ message: "Calendar event not found" });
+    }
+
+    await event.destroy();
+
+    res.status(200).json({ message: "Calendar event deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting event:", error);
+    res.status(500).json({ message: "Error deleting calendar event" });
   }
 };

@@ -21,6 +21,10 @@ const CalendarEvent = sequelize.define("CalendarEvent", {
     allowNull: false,
     unique: true, // This database constraint makes it impossible to have duplicates
   },
+  isDone: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
 });
 
 module.exports = CalendarEvent;

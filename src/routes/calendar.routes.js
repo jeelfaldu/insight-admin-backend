@@ -22,5 +22,7 @@ router.post("/generate", authMiddleware, async (req, res) => {
 });
 
 router.get("/", calendarController.getEvents);
+router.put("/:id/mark-done", authMiddleware, calendarController.markEventAsDone);
+router.delete("/:id", authMiddleware, calendarController.deleteEvent);
 
 module.exports = router;
