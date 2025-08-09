@@ -15,9 +15,9 @@ const RentRollImport = sequelize.define("RentRollImport", {
   tenantId: { type: DataTypes.STRING, allowNull: true }, // Allow null for vacant units
 
   // Data directly from the CSV
+  description: { type: DataTypes.STRING, allowNull: true },
   amountReceivable: { type: DataTypes.FLOAT, allowNull: false },
   lastPaymentDate: { type: DataTypes.DATEONLY, allowNull: true },
-  paymentAmount: { type: DataTypes.FLOAT, allowNull: true },
   tenantStatus: { type: DataTypes.STRING },
 
   // For auditing
@@ -28,8 +28,6 @@ const RentRollImport = sequelize.define("RentRollImport", {
     type: DataTypes.STRING, // Format: "YYYY-MM"
     allowNull: false,
   },
-
-  sourceFile: { type: DataTypes.STRING },
 });
 
 module.exports = RentRollImport;

@@ -128,18 +128,18 @@ exports.uploadRentRollData = async (req, res) => {
         continue;
       }
 
-      const unitName = String(row[0]).trim();
+      const lastPaymentDateStr = String(row[0] || "").trim();
       const tenantNameFromCsv = String(row[1] || "").trim();
-      const amountStr = String(row[3] || "0").replace(/,/g, "");
+      const description = String(row[3] || "").trim();
+      const amountStr = String(row[5] || "0").replace(/,/g, "");
       const receivableAmount = parseFloat(amountStr);
+      const unitName = String(row[6] || "").trim();
 
       if (
-        unitName &&
         tenantNameFromCsv &&
-        !isNaN(receivableAmount) &&
-        receivableAmount > 0
+        !isNaN(receivableAmount)
       ) {
-        const date = new Date(String(row[4] || "").trim());
+        const date = new Date(lastPaymentDateStr);
 
         if (isNaN(date.getTime())) {
           errors.push({
@@ -189,12 +189,9 @@ exports.uploadRentRollData = async (req, res) => {
           propertyId: currentPropertyContext.id,
           unitId: foundUnit.id,
           tenantId: foundTenant.id,
-          tenantStatus: row[2] || "",
+          description: description,
           amountReceivable: receivableAmount,
-          lastPaymentDate: row[4] ? new Date(row[4]) : null,
-          paymentAmount: row[5]
-            ? parseFloat(String(row[5]).replace(/,/g, ""))
-            : null,
+          lastPaymentDate: date,
           month: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
             2,
             "0"
