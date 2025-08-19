@@ -148,21 +148,14 @@ exports.getSummaryData = async (req, res) => {
       propertiesInPreviousPeriod
     );
 
-    const occupancyByType = {}; // e.g., { Commercial: 250000, Residential: 120000 }
+    const occupancyByType = {};
 
-    activeLeases.forEach((lease) => {
-      const property = allPropertiesWithUnits.find(
-        (p) => p.id + "" === lease.propertyId + ""
-      );
-      const unit = property?.units.find((u) => u.id + "" === lease.unitId + "");
-
-      if (property) {
-        const type = property.type;
-        if (!occupancyByType[type]) {
-          occupancyByType[type] = 0;
-        }
-        occupancyByType[type] += (unit?.sqft || 0);
+    allPropertiesWithUnits.forEach((property) => {
+      const type = property.type;
+      if (!occupancyByType[type]) {
+        occupancyByType[type] = 0;
       }
+      occupancyByType[type]++;
     });
 
     const occupancyChartData = Object.keys(occupancyByType).map((key) => ({
