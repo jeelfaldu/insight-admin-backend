@@ -156,12 +156,12 @@ exports.getSummaryData = async (req, res) => {
       );
       const unit = property?.units.find((u) => u.id + "" === lease.unitId + "");
 
-      if (property && unit) {
+      if (property) {
         const type = property.type;
         if (!occupancyByType[type]) {
           occupancyByType[type] = 0;
         }
-        occupancyByType[type] += unit.sqft;
+        occupancyByType[type] += (unit?.sqft || 0);
       }
     });
 
