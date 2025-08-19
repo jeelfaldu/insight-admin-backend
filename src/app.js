@@ -16,6 +16,7 @@ const userRoutes = require("./routes/user.routes");
 const boxRoutes = require("./routes/box.routes"); // 👈 1. Import the new routes
 const financials = require("./routes/financials.routes");
 const reminderRoutes = require("./routes/reminder.routes");
+const getInTouchRoutes = require("./routes/get-in-touch.routes");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -104,6 +105,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/box", boxRoutes); // 👈 2. Use the new routes with the '/api/box' prefix
 app.use("/api/financials", financials); // 👈 2. Use the new routes with the '/api/box' prefix
 app.use('/api/reminders', reminderRoutes);
+app.use("/api/get-in-touch", getInTouchRoutes);
 // === Database Connection & Server Start ===
 sequelize
   .authenticate()
