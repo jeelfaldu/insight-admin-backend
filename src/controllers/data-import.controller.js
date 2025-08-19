@@ -2,6 +2,7 @@ const RentRollData = require("../models/rent-roll-data.model");
 const Property = require("../models/property.model");
 const Tenant = require("../models/tenant.model");
 const Lease = require("../models/lease.model");
+const { parse } = require("date-fns");
 const RentRollImport = require("../models/rent-roll-data.model");
 /**
  * A "fuzzy" search function to find a tenant even with small variations in the name.
@@ -139,7 +140,7 @@ exports.uploadRentRollData = async (req, res) => {
         tenantNameFromCsv &&
         !isNaN(receivableAmount)
       ) {
-        const date = new Date(lastPaymentDateStr);
+        const date = parse(lastPaymentDateStr, "MM/dd/yyyy", new Date());
 
         if (isNaN(date.getTime())) {
           errors.push({
