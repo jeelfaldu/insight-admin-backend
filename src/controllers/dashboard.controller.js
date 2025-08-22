@@ -215,7 +215,6 @@ exports.getChartData = async (req, res) => {
       ? req.query.propertyIds.split(",")
       : null;
 
-      
     const timePeriod = req.query.timePeriod || "6m"; // Default to last 6 months
 
     // --- 2. Define the date range based on the time period ---
@@ -252,7 +251,9 @@ exports.getChartData = async (req, res) => {
         : null;
 
       if (minLeaseDate && minRentRollDate) {
-        startDate = new Date(Math.min(minLeaseDate.getTime(), minRentRollDate.getTime()));
+        startDate = new Date(
+          Math.min(minLeaseDate.getTime(), minRentRollDate.getTime())
+        );
       } else if (minLeaseDate) {
         startDate = minLeaseDate;
       } else if (minRentRollDate) {
@@ -281,7 +282,9 @@ exports.getChartData = async (req, res) => {
         : null;
 
       if (maxLeaseDate && maxRentRollDate) {
-        endDate = new Date(Math.max(maxLeaseDate.getTime(), maxRentRollDate.getTime()));
+        endDate = new Date(
+          Math.max(maxLeaseDate.getTime(), maxRentRollDate.getTime())
+        );
       } else if (maxLeaseDate) {
         endDate = maxLeaseDate;
       } else if (maxRentRollDate) {
@@ -314,10 +317,11 @@ exports.getChartData = async (req, res) => {
       RentRollImport.findAll({
         attributes: [
           "month",
+          "propertyId",
           [fn("sum", col("amountReceivable")), "totalReceivable"],
         ],
         where: receivableWhereClause,
-        group: ["month"],
+        group: ["month", "propertyId"],
         order: [["month", "ASC"]],
         raw: true,
       }),
@@ -334,6 +338,7 @@ exports.getChartData = async (req, res) => {
     const receivableData = receivables.map((item) => ({
       name: item.month,
       value: parseFloat(item.totalReceivable),
+      propertyId: item.propertyId
     }));
 
     res.status(200).json({
@@ -341,6 +346,7 @@ exports.getChartData = async (req, res) => {
       billedData,
     });
   } catch (error) {
+    console.log("🚀 ~ error:", error);
     res
       .status(500)
       .json({ message: "Error fetching chart data", error: error.message });
@@ -607,11 +613,9 @@ exports.getPortfolioUnits = async (req, res) => {
     res.status(200).json(allUnits);
   } catch (error) {
     console.error("Error fetching portfolio units:", error);
-    res
-      .status(500)
-      .json({
-        message: "Error fetching portfolio units",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error fetching portfolio units",
+      error: error.message,
+    });
   }
 };
