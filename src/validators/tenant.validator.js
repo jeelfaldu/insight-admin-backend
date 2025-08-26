@@ -4,7 +4,7 @@ const { body, validationResult } = require("express-validator");
 const tenantValidationRules = () => {
   return [
     body("name", "Tenant or Business Name is required").notEmpty().trim(),
-    body("email", "A valid email is required").isEmail().normalizeEmail(),
+    body("email").optional().trim(),
     body("status", "A valid status is required").isIn([
       "Active",
       "Inactive",

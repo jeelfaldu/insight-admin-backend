@@ -296,8 +296,19 @@ exports.getChartData = async (req, res) => {
       startDate = subMonths(endDate, 12);
     } else if (timePeriod === "ytd") {
       startDate = new Date(endDate.getFullYear(), 0, 1); // Year to date
-    } else {
+    } else if (timePeriod === "6m") {
       startDate = subMonths(endDate, 6); // Default: last 6 months
+    } else if (timePeriod === "1m") {
+      startDate = subMonths(endDate, 1); // Default: last 6 months
+    } else {
+      if (!req.query.startDate || !req.query.endDate) {
+        return res.status(400).json({
+          message:
+            "For custom time periods, please provide a startDate and endDate.",
+        });
+      }
+      startDate = new Date(req.query.startDate);
+      endDate = new Date(req.query.endDate);
     }
 
     // --- 3. Build WHERE clauses for our database queries ---
@@ -338,7 +349,7 @@ exports.getChartData = async (req, res) => {
     const receivableData = receivables.map((item) => ({
       name: item.month,
       value: parseFloat(item.totalReceivable),
-      propertyId: item.propertyId
+      propertyId: item.propertyId,
     }));
 
     res.status(200).json({
