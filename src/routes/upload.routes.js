@@ -10,7 +10,7 @@ const authMiddleware = require("../middleware/auth.middleware");
 router.post(
   "/images",
   authMiddleware, // Ensure user is authenticated
-  uploadMiddleware.upload.array("images", 5), // 'images' is the field name, 5 is the max count
+  uploadMiddleware.upload.array("images", 15), // 'images' is the field name, 5 is the max count
   (req, res) => {
     // If the upload is successful, req.files will be an array of file objects from S3
     if (!req.files || req.files.length === 0) {
