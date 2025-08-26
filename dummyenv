@@ -1,0 +1,24 @@
+# .env file
+# DATABASE_URL="postgresql://insight-admin_owner:npg_IfPQJOG0gj1p@ep-lively-sun-a2g80ybl-pooler.eu-central-1.aws.neon.tech/insight-admin?sslmode=require"
+DATABASE_URL="postgresql://postgres.hamfvokuwdzthgkgisxb:evIjNFq28DhVuNji@aws-0-ap-south-1.pooler.supabase.com:6543/postgres"
+PORT=3000
+JWT_SECRET="a_very_long_and_super_secret_string_that_no_one_can_guess"
+
+
+# 👇 ADD THESE AWS DETAILS 👇
+AWS_ACCESS_KEY_ID="a27dc5117a37b8a9114f25c59b70391d"
+AWS_SECRET_ACCESS_KEY="d7c1f1b747daa5f79a070d4af52c1d5d59a9c4bbcd9d9b787b57bcafd71bef13"
+AWS_S3_BUCKET_NAME="insight.admin.dev"
+AWS_REGION="ap-south-1"
+AWS_S3_ENDPOINT="https://hamfvokuwdzthgkgisxb.supabase.co/storage/v1/s3"
+GOOGLE_MAPS_API_KEY="AIzaSyBNsFUOE8cjG_HyWeP4pHz670g_XX86WSA"
+
+
+BOX_ACCESS_TOKEN="wtdpwkaby6uycdtc2m1t5gp1ztd9fh9l"
+
+
+BOX_CLIENT_ID=wtdpwkaby6uycdtc2m1t5gp1ztd9fh9l
+BOX_CLIENT_SECRET=1kLOOi5SoaRTyIXyi0wkCxPw0gcWw5tY
+BOX_REDIRECT_URI=http://localhost:3000/box/callback
+
+FRONTEND_URL=http://localhost:8100
