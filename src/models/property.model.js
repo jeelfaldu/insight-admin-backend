@@ -24,7 +24,7 @@ const Property = sequelize.define("Property", {
   // === Summary Tab: Location Details ===
   address: { type: DataTypes.JSONB, allowNull: false }, // Storing as JSONB for simplicity (street, city, state, zip)
   county: { type: DataTypes.STRING, allowNull: false },
-  countyUrl: { type: DataTypes.STRING },
+  countyUrls: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] }, // Changed to support multiple URLs
   city: { type: DataTypes.STRING }, // The optional city field
   latitude: { type: DataTypes.FLOAT },
   longitude: { type: DataTypes.FLOAT },

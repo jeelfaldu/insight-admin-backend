@@ -34,6 +34,8 @@ exports.getPropertyById = async (req, res) => {
   }
 };
 
+
+
 // --- CREATE NEW PROPERTY ---
 exports.createProperty = async (req, res) => {
   try {
@@ -46,7 +48,7 @@ exports.createProperty = async (req, res) => {
       address: summary.address,
       county: summary.county,
       acres: req.body.metrics?.acres,
-      countyUrl: summary.countyUrl,
+      countyUrls: summary.countyUrls, // Changed to countyUrls
       city: summary.city,
       cityParcelId: summary?.cityParcelId,
       type: summary.type,

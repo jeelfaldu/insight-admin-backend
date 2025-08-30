@@ -10,6 +10,15 @@ const createPropertyValidationRules = () => {
     body('summary.type', 'Property Type is required').isIn(['Residential', 'Commercial', 'Industrial', 'Mixed Use']),
     body('summary.county', 'County is required').notEmpty(),
     body('summary.imageUrls', 'At least one image URL is required').isArray({ min: 1 }),
+    body('summary.countyUrls', 'County URLs must be an array of valid URLs').optional().isArray().custom((urls) => {
+      if (!urls) return true;
+      for (const url of urls) {
+        if (typeof url !== 'string' || !url.match(/^https?:\/\/.+/)) {
+          throw new Error('Each County URL must be a valid URL');
+        }
+      }
+      return true;
+    }),
 
     // --- Address Nested Object ---
     body('summary.address.street', 'Street is required').notEmpty(),
