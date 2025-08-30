@@ -9,11 +9,16 @@ const leaseValidationRules = () => {
     body("startDate", "A valid lease start date is required")
       .isISO8601()
       .toDate(),
-    body("endDate", "A valid lease end date is required").isISO8601().toDate(),
+    // endDate is now optional
+    body("endDate")
+      .optional({ nullable: true, checkFalsy: true }) // Allow null or empty string
+      .isISO8601()
+      .toDate()
+      .withMessage("A valid lease end date is required if provided."),
 
-    // Validate that start date is before end date
+    // Validate that start date is before end date, only if endDate is provided
     body("endDate").custom((value, { req }) => {
-      if (new Date(value) <= new Date(req.body.startDate)) {
+      if (value && req.body.startDate && new Date(value) <= new Date(req.body.startDate)) {
         throw new Error("End date must be after start date");
       }
       return true;

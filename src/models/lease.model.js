@@ -24,7 +24,7 @@ const Lease = sequelize.define(
     },
     endDate: {
       type: DataTypes.DATEONLY,
-      allowNull: false,
+      allowNull: true, // Changed to allow null for month-to-month leases
     },
     // We store the complex schedules as JSONB for simplicity and flexibility
     rentSchedule: {
