@@ -8,6 +8,7 @@ router.use(authMiddleware);
 
 router.get('/', attachmentController.getAttachments);
 router.post('/', attachmentValidationRules(), validate, attachmentController.createAttachment);
+router.put('/:id', attachmentValidationRules(), validate, attachmentController.updateAttachment);
 router.delete('/:id', attachmentController.deleteAttachment);
 
 module.exports = router;

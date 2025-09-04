@@ -15,6 +15,7 @@ const Attachment = sequelize.define("Attachment", {
   },
   fileName: { type: DataTypes.STRING, allowNull: false },
   fileUrl: { type: DataTypes.STRING, allowNull: false }, // URL from S3/Supabase
+  folderPath: { type: DataTypes.STRING },
   category: { type: DataTypes.STRING, allowNull: false },
   fileSize: { type: DataTypes.STRING },
 });
