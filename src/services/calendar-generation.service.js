@@ -112,7 +112,7 @@ const generateAllCalendarEvents = async () => {
   try {
     if (allEventsToUpsert.length > 0) {
       await Promise.all(
-        allEventsToUpsert.map((eventData) =>
+        allEventsToUpsert.filter(e => !!e.endDate).map((eventData) =>
           CalendarEvent.upsert(eventData, { transaction })
         )
       );

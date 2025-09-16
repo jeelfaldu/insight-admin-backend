@@ -181,7 +181,7 @@ exports.getSummaryData = async (req, res) => {
         trendDirection: propertiesTrend.trendDirection,
       },
       occupancyRate: {
-        value: parseFloat(occupancyRate.toFixed(1)),
+        value: parseFloat(occupancyRate2.toFixed(1)),
         trend: "+1.5% from last month", // Placeholder: This requires more complex historical data
         trendDirection: "up",
       },

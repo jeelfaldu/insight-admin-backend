@@ -65,7 +65,7 @@ app.get("/box/callback", (req, res) => {
             acquiredAtMS: ${tokenInfo.acquiredAtMS || Date.now()}
           };
 
-          const targetOrigin = "https://insight-admin.vercel.app/"; // Make sure your main app runs on this
+          const targetOrigin = "https://www.insightventuresga.com/"; // Make sure your main app runs on this
 
           if (window.opener && !window.opener.closed) {
             console.log("✅ Sending postMessage to opener");
