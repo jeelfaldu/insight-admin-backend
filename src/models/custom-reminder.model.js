@@ -20,6 +20,8 @@ const CustomReminder = sequelize.define("CustomReminder", {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },
+}, {
+  paranoid: true, // Enable soft deletes
 });
 
 module.exports = CustomReminder;

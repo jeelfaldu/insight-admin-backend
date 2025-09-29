@@ -20,7 +20,9 @@ exports.createOrUpdateReminder = async (req, res) => {
 
 exports.getReminders = async (req, res) => {
   try {
-    const reminders = await CustomReminder.findAll();
+    const reminders = await CustomReminder.findAll({
+      where: { deletedAt: null } // Only fetch non-deleted reminders
+    });
     res.status(200).json(reminders);
   } catch (error) {
     res.status(500).json({ message: "Error fetching reminders" });
@@ -28,11 +30,15 @@ exports.getReminders = async (req, res) => {
 };
 exports.getReminder = async (req, res) => {
   try {
-    const reminder = await CustomReminder.findByPk(req.params.id);
-    const reminder1 = await CalendarEvent.findOne({
-      where: { sourceId: req.params.id },
+    const reminder = await CustomReminder.findByPk(req.params.id, {
+      where: { deletedAt: null } // Only fetch non-deleted reminder
     });
-    const reminder2 = await CalendarEvent.findByPk(); // Corrected model
+    const reminder1 = await CalendarEvent.findOne({
+      where: { sourceId: req.params.id, deletedAt: null }, // Only fetch non-deleted calendar event
+    });
+    const reminder2 = await CalendarEvent.findByPk(null, {
+      where: { deletedAt: null } // Only fetch non-deleted calendar event
+    }); // Corrected model
 
     res.status(200).json(reminder || reminder1 || reminder2);
   } catch (error) {
@@ -68,15 +74,17 @@ exports.deleteReminder = async (req, res) => {
       return res.status(404).json({ message: "Reminder not found." });
     }
     if (reminder) {
-      await reminder.destroy();
+      await reminder.update({ deletedAt: new Date() }); // Soft delete CustomReminder
     }
+    // Assuming CalendarEvent also needs soft delete or is handled by cascade delete from CustomReminder
+    // For now, I'll soft delete CalendarEvent records associated with the reminder.
     if (reminder1) {
-      await reminder1.destroy();
+      await reminder1.update({ deletedAt: new Date() }); // Soft delete CalendarEvent
     }
     if (reminder2) {
-      await reminder2.destroy();
+      await reminder2.update({ deletedAt: new Date() }); // Soft delete CalendarEvent
     }
-    res.status(204).send("DONE"); // Success, no content
+    res.status(200).json({ message: "Reminder soft-deleted successfully." });
   } catch (error) {
     console.debug("🚀 ~ error:", error);
     res.status(500).json({ message: "Error deleting reminder" });

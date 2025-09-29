@@ -136,7 +136,7 @@ const generateAllCalendarEvents = async () => {
 };
 async function pruneOrphanedEvents() {
   console.log("Pruning orphaned calendar events...");
-  const allEvents = await CalendarEvent.findAll();
+  const allEvents = await CalendarEvent.findAll({ where: { deletedAt: null } }); // Only consider non-deleted events for pruning
   const sourceIdsByType = {
     project: (await Project.findAll({ attributes: ["id"] })).map((p) => p.id),
     lease: (await Lease.findAll({ attributes: ["id"] })).map((l) => l.id),
@@ -159,8 +159,11 @@ async function pruneOrphanedEvents() {
   });
 
   if (eventsToDelete.length > 0) {
-    await CalendarEvent.destroy({ where: { id: eventsToDelete } });
-    console.log(`Deleted ${eventsToDelete.length} orphaned events.`);
+    await CalendarEvent.update(
+      { deletedAt: new Date() },
+      { where: { id: eventsToDelete } }
+    );
+    console.log(`Soft-deleted ${eventsToDelete.length} orphaned events.`);
   }
 }
 
@@ -181,7 +184,7 @@ const mapDaysToRRule = (days) => {
 
 // --- 👇 REWRITTEN GENERATOR FUNCTION 👇 ---
 async function generateCustomReminderEvents(transaction) {
-  const reminders = await CustomReminder.findAll({ transaction });
+  const reminders = await CustomReminder.findAll({ where: { deletedAt: null }, transaction }); // Only consider non-deleted reminders
   const eventsToUpsert = [];
   const signaturesToDelete = [];
 
@@ -262,12 +265,12 @@ async function generateCustomReminderEvents(transaction) {
   }
 
   if (signaturesToDelete.length > 0) {
-    await CalendarEvent.destroy({
-      where: { sourceSignature: signaturesToDelete },
-      transaction,
-    });
+    await CalendarEvent.update(
+      { deletedAt: new Date() },
+      { where: { sourceSignature: signaturesToDelete }, transaction }
+    );
     console.log(
-      `Cleaned up ${signaturesToDelete.length} orphaned single reminder events.`
+      `Soft-deleted ${signaturesToDelete.length} orphaned single reminder events.`
     );
   }
 

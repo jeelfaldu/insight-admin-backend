@@ -35,6 +35,7 @@ exports.getDashboardAlerts = async (req, res) => {
           [Op.gte]: today, // Greater than or equal to today
           [Op.lte]: tenDaysFromNow, // Less than or equal to 10 days from now
         },
+        deletedAt: null, // Exclude soft-deleted events
       },
       order: [["startDate", "ASC"]], // Show the most urgent alerts first
       limit: 5, // Limit to a manageable number of alerts for the dashboard

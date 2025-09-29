@@ -4,6 +4,7 @@ const CalendarEvent = require("../models/calendar-event.model");
 exports.getEvents = async (req, res) => {
   try {
     const dbEvents = await CalendarEvent.findAll({
+      where: { deletedAt: null }, // Only fetch non-deleted calendar events
       order: [["startDate", "ASC"]],
     });
 
@@ -20,7 +21,8 @@ exports.getEvents = async (req, res) => {
         type: event.sourceType, // This is now 'Project Deadline', 'Lease Expiration', etc.
         url: event.url,
       },
-      isDone: event.isDone
+      isDone: event.isDone,
+      deletedAt: event.deletedAt || null
     }));
 
     res.status(200).json(frontendEvents);
@@ -59,9 +61,9 @@ exports.deleteEvent = async (req, res) => {
       return res.status(404).json({ message: "Calendar event not found" });
     }
 
-    await event.destroy();
+    await event.update({ deletedAt: new Date() }); // Soft delete CalendarEvent
 
-    res.status(200).json({ message: "Calendar event deleted successfully" });
+    res.status(200).json({ message: "Calendar event soft-deleted successfully" });
   } catch (error) {
     console.error("Error deleting event:", error);
     res.status(500).json({ message: "Error deleting calendar event" });
