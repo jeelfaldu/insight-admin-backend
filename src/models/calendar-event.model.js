@@ -25,8 +25,7 @@ const CalendarEvent = sequelize.define("CalendarEvent", {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },
-}, {
-  paranoid: true, // Enable soft deletes
+  deletedAt: { type: DataTypes.DATE, allowNull: true },
 });
 
 module.exports = CalendarEvent;

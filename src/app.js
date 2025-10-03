@@ -113,7 +113,7 @@ sequelize
     console.log("✅ Database connection has been established successfully.");
     // Synchronize models (optional, good for development)
     // Use { alter: true } to non-destructively update tables
-    return sequelize.sync({ alter: true });
+    return sequelize.sync({ alter: false });
   })
   .then(() => {
     app.listen(PORT, () => {

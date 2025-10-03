@@ -112,9 +112,9 @@ const generateAllCalendarEvents = async () => {
   try {
     if (allEventsToUpsert.length > 0) {
       await Promise.all(
-        allEventsToUpsert.filter(e => !!e.endDate).map((eventData) =>
-          CalendarEvent.upsert(eventData, { transaction })
-        )
+        allEventsToUpsert
+          .filter((e) => !!e.endDate)
+          .map((eventData) => CalendarEvent.upsert(eventData, { transaction }))
       );
       console.log(`Upserted ${allEventsToUpsert.length} smart events.`);
     }
@@ -184,7 +184,10 @@ const mapDaysToRRule = (days) => {
 
 // --- 👇 REWRITTEN GENERATOR FUNCTION 👇 ---
 async function generateCustomReminderEvents(transaction) {
-  const reminders = await CustomReminder.findAll({ where: { deletedAt: null }, transaction }); // Only consider non-deleted reminders
+  const reminders = await CustomReminder.findAll({
+    where: { deletedAt: null },
+    transaction,
+  }); // Only consider non-deleted reminders
   const eventsToUpsert = [];
   const signaturesToDelete = [];
 
@@ -206,6 +209,7 @@ async function generateCustomReminderEvents(transaction) {
           sourceType: "Custom Reminder",
           sourceSignature: `reminder-single-${reminder.id}`,
           allDay: true,
+          deletedAt: reminder?.deletedAt || null,
         });
       }
       continue;
@@ -260,6 +264,7 @@ async function generateCustomReminderEvents(transaction) {
           .slice(0, 10)}`,
         allDay: true,
         meta: { originalStartDate: reminder.startDate },
+        deletedAt: reminder?.deletedAt || null,
       });
     });
   }
@@ -276,7 +281,9 @@ async function generateCustomReminderEvents(transaction) {
 
   if (eventsToUpsert.length > 0) {
     await Promise.all(
-      eventsToUpsert.map((event) => CalendarEvent.upsert(event, { transaction }))
+      eventsToUpsert.map((event) =>
+        CalendarEvent.upsert(event, { transaction })
+      )
     );
     console.log(`Upserted ${eventsToUpsert.length} custom reminder events.`);
   }

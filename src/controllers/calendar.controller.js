@@ -1,4 +1,5 @@
 const CalendarEvent = require("../models/calendar-event.model");
+const CustomReminder = require("../models/custom-reminder.model");
 
 // GET /api/calendar-events
 exports.getEvents = async (req, res) => {
@@ -22,7 +23,7 @@ exports.getEvents = async (req, res) => {
         url: event.url,
       },
       isDone: event.isDone,
-      deletedAt: event.deletedAt || null
+      deletedAt: event.deletedAt || null,
     }));
 
     res.status(200).json(frontendEvents);
@@ -56,14 +57,24 @@ exports.deleteEvent = async (req, res) => {
   try {
     const { id } = req.params;
     const event = await CalendarEvent.findByPk(id);
+    if (event?.sourceId) {
+      const reminder = await CustomReminder.findOne({
+        where: { id: event?.sourceId },
+      });
+      reminder.deletedAt = new Date();
+      await reminder.save();
+    }
 
     if (!event) {
       return res.status(404).json({ message: "Calendar event not found" });
     }
 
-    await event.update({ deletedAt: new Date() }); // Soft delete CalendarEvent
+    event.deletedAt = new Date();
+    await event.save();
 
-    res.status(200).json({ message: "Calendar event soft-deleted successfully" });
+    res
+      .status(200)
+      .json({ message: "Calendar event soft-deleted successfully" });
   } catch (error) {
     console.error("Error deleting event:", error);
     res.status(500).json({ message: "Error deleting calendar event" });
