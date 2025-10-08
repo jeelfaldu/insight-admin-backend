@@ -8,7 +8,10 @@ const {
   validate,
 } = require("../validators/property.validator");
 
-// --- PUBLIC ROUTE (anyone logged in can view) ---
+// --- PUBLIC ROUTE (anyone can view) ---
+router.get("/public", propertyController.getAllProperties);
+
+// --- PROTECTED ROUTES (only logged in users can view) ---
 router.get("/", authMiddleware, propertyController.getAllProperties);
 router.get("/:id", authMiddleware, propertyController.getPropertyById);
 
