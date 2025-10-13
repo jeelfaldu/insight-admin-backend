@@ -17,6 +17,8 @@ const boxRoutes = require("./routes/box.routes"); // 👈 1. Import the new rout
 const financials = require("./routes/financials.routes");
 const reminderRoutes = require("./routes/reminder.routes");
 const getInTouchRoutes = require("./routes/get-in-touch.routes");
+const offerRequestRoutes = require("./routes/offer-request.routes"); // New: Offer Request Routes
+const listingInquiryRoutes = require("./routes/listing-inquiry.routes"); // New: Listing Inquiry Routes
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -106,6 +108,8 @@ app.use("/api/box", boxRoutes); // 👈 2. Use the new routes with the '/api/box
 app.use("/api/financials", financials); // 👈 2. Use the new routes with the '/api/box' prefix
 app.use('/api/reminders', reminderRoutes);
 app.use("/api/get-in-touch", getInTouchRoutes);
+app.use("/api/request-offer", offerRequestRoutes); // New: Offer Request Routes
+app.use("/api/inquiries", listingInquiryRoutes); // New: Listing Inquiry Routes
 // === Database Connection & Server Start ===
 sequelize
   .authenticate()
