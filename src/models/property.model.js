@@ -41,6 +41,7 @@ const Property = sequelize.define("Property", {
   },
   subType: { type: DataTypes.STRING },
   zoning: { type: DataTypes.STRING },
+  isForSale: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: false },
 
   // === Key Metrics Tab ===
   totalSqft: {

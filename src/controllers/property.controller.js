@@ -54,6 +54,7 @@ exports.createProperty = async (req, res) => {
       type: summary.type,
       subType: summary.subType,
       zoning: summary.zoning,
+      isForSale: summary.isForSale,
       description: summary.description,
       imageUrls: summary.imageUrls,
     };

@@ -7,6 +7,7 @@ exports.submitOffer = async (req, res) => {
       propertyAddress,
       propertyType,
       inquirerEmail,
+      inquirerPhone,
       isLegalOwner,
       leaseStatus,
       monthlyRentalIncome
@@ -19,6 +20,7 @@ exports.submitOffer = async (req, res) => {
       propertyAddress,
       propertyType,
       inquirerEmail,
+      inquirerPhone,
       isLegalOwner: parsedIsLegalOwner,
       leaseStatus,
       monthlyRentalIncome: monthlyRentalIncome || null // Ensure it's null if empty

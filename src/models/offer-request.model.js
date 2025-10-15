@@ -24,6 +24,10 @@ const OfferRequest = sequelize.define("OfferRequest", {
       isEmail: true,
     },
   },
+  inquirerPhone: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
   isLegalOwner: {
     type: DataTypes.BOOLEAN,
     allowNull: false,

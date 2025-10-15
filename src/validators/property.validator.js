@@ -9,6 +9,7 @@ const createPropertyValidationRules = () => {
     body('summary.propertyId', 'Property ID is required').notEmpty().trim(),
     body('summary.type', 'Property Type is required').isIn(['Residential', 'Commercial', 'Industrial', 'Mixed Use']),
     body('summary.county', 'County is required').notEmpty(),
+    body('summary.isForSale', 'isForSale must be a boolean').optional().isBoolean(),
     body('summary.imageUrls', 'At least one image URL is required').isArray({ min: 1 }),
     body('summary.countyUrls', 'County URLs must be an array of valid URLs').optional().isArray().custom((urls) => {
       if (!urls) return true;
