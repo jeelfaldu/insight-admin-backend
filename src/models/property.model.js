@@ -48,6 +48,11 @@ const Property = sequelize.define("Property", {
     allowNull: true,
     defaultValue: 0,
   },
+  acres: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    defaultValue: 0,
+  },
   usableSqft: {
     type: DataTypes.FLOAT,
     allowNull: true,
