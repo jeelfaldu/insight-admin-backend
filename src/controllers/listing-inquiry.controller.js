@@ -7,6 +7,7 @@ exports.submitInquiry = async (req, res) => {
       listingType,
       unitInterestedIn, // This will be an array of strings from the frontend
       name,
+      phoneNumber,
       email
     } = req.body;
 
@@ -16,6 +17,7 @@ exports.submitInquiry = async (req, res) => {
       listingType,
       unitInterestedIn: unitInterestedIn || [], // Ensure it's an empty array if not provided
       name,
+      phoneNumber,
       email
     });
 
