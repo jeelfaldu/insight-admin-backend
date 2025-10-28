@@ -315,7 +315,10 @@ exports.getChartData = async (req, res) => {
     // --- 3. Build WHERE clauses for our database queries ---
     const leaseWhereClause = {
       startDate: { [Op.lte]: endDate },
-      endDate: { [Op.gte]: startDate },
+      [Op.or]: [
+        { endDate: { [Op.gte]: startDate } },
+        { endDate: null } // Include leases where endDate is null
+      ],
     };
     const receivableWhereClause = {
       lastPaymentDate: { [Op.between]: [startDate, endDate] },
@@ -375,7 +378,7 @@ exports.getChartData = async (req, res) => {
  * @returns {Array<{name: string, value: number}>} An array of ChartDataPoint objects.
  */
 function processLeasesIntoMonthlyData(leases, dateRange) {
-  const monthlyBilled = {};
+  const monthlyBilled = {}; // Structure: { 'yyyy-MM': { propertyId: totalAmount } }
 
   if (!leases || !dateRange || !dateRange.start || !dateRange.end) {
     return [];
@@ -386,11 +389,15 @@ function processLeasesIntoMonthlyData(leases, dateRange) {
 
   leases.forEach((lease) => {
     const allCharges = [...(lease.rentSchedule || [])];
+    const propertyId = lease.propertyId; // Get propertyId from the lease object
 
     allCharges.forEach((charge) => {
       try {
         let chargeStart = startOfMonth(new Date(charge.startDate));
-        const chargeEnd = startOfMonth(new Date(charge.endDate));
+        // If charge.endDate is null, treat it as ongoing indefinitely
+        const chargeEnd = charge?.endDate
+          ? startOfMonth(new Date(charge.endDate))
+          : new Date(9999, 11, 31); // A very distant future date
 
         // Determine the effective start and end for this charge within the filter period
         const effectiveStart = isBefore(chargeStart, filterStartDate)
@@ -411,10 +418,13 @@ function processLeasesIntoMonthlyData(leases, dateRange) {
           const monthKey = format(currentMonth, "yyyy-MM");
 
           if (!monthlyBilled[monthKey]) {
-            monthlyBilled[monthKey] = 0;
+            monthlyBilled[monthKey] = {};
+          }
+          if (!monthlyBilled[monthKey][propertyId]) {
+            monthlyBilled[monthKey][propertyId] = 0;
           }
 
-          monthlyBilled[monthKey] += charge.monthlyAmount;
+          monthlyBilled[monthKey][propertyId] += charge.monthlyAmount;
 
           currentMonth = addMonths(currentMonth, 1);
         }
@@ -429,24 +439,48 @@ function processLeasesIntoMonthlyData(leases, dateRange) {
   });
 
   // Ensure all months in the requested range are present, even if no data
+  // And flatten the structure for the chart data
+  const result = [];
   let currentMonthInRange = startOfMonth(filterStartDate);
   while (
     isBefore(currentMonthInRange, filterEndDate) ||
     isEqual(currentMonthInRange, filterEndDate)
   ) {
     const monthKey = format(currentMonthInRange, "yyyy-MM");
-    if (!monthlyBilled[monthKey]) {
-      monthlyBilled[monthKey] = 0;
+    const propertiesForMonth = monthlyBilled[monthKey] || {};
+
+    // If there's no data for this month/property, add a 0 entry
+    if (Object.keys(propertiesForMonth).length === 0 && leases.length > 0) {
+      // If there are leases, but no billed data for this month,
+      // we should still include entries for the properties involved in the leases.
+      // This assumes we want to show all relevant properties even if they had 0 billed for a month.
+      // For simplicity, if no data for the month, we just add a generic 0 entry if no specific propertyId is requested.
+      // If propertyIds were filtered, we'd need to iterate through those.
+      // For now, if no data, we just add a single 0 entry if no specific property data exists.
+      result.push({
+        name: monthKey,
+        value: 0,
+        propertyId: null, // Or a default/placeholder if no specific property data
+      });
+    } else {
+      for (const propId in propertiesForMonth) {
+        result.push({
+          name: monthKey,
+          value: propertiesForMonth[propId],
+          propertyId: propId,
+        });
+      }
     }
     currentMonthInRange = addMonths(currentMonthInRange, 1);
   }
 
-  return Object.keys(monthlyBilled)
-    .sort() // Sort by month key to ensure chronological order
-    .map((monthKey) => ({
-      name: monthKey,
-      value: monthlyBilled[monthKey],
-    }));
+  // Sort by month key and then by propertyId for consistent ordering
+  return result.sort((a, b) => {
+    if (a.name !== b.name) {
+      return a.name.localeCompare(b.name);
+    }
+    return String(a.propertyId).localeCompare(String(b.propertyId));
+  });
 }
 
 /**
