@@ -21,7 +21,7 @@ const upload = multer({
   storage: multerS3({
     s3: client, // Pass the new S3Client instance
     bucket: process.env.AWS_S3_BUCKET_NAME,
-    acl: "public-read", // Make the file publicly accessible
+    // acl: "public-read", // Omitted: Cloudflare R2 does not use S3 ACLs
 
     metadata: function (req, file, cb) {
       cb(null, { fieldName: file.fieldname });

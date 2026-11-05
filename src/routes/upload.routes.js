@@ -18,9 +18,9 @@ router.post(
     }
     // `multer-s3` provides the 'location' key which is the public URL of the uploaded file
     // https://hamfvokuwdzthgkgisxb.supabase.co/storage/v1/object/public/insight.admin.dev/properties/image-1751279312381-388872947.jpeg
+    const baseUrl = process.env.R2_PUBLIC_URL || "https://pub-58a8d5edd72444eda2ea8cd3df3d17b2.r2.dev";
     const fileUrls = req.files.map(
-      (file) =>
-        `https://hamfvokuwdzthgkgisxb.supabase.co/storage/v1/object/public/insight.admin.dev/${file.key}`
+      (file) => `${baseUrl}/${file.key}`
     );
 
     res.status(201).json({

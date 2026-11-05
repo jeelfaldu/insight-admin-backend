@@ -74,7 +74,8 @@ exports.transferToS3 = async (req, res) => {
 
     await s3Client.send(new PutObjectCommand(s3Params));
 
-    const fileUrl = `https://hamfvokuwdzthgkgisxb.supabase.co/storage/v1/object/public/insight.admin.dev/${s3Key}`;
+    const baseUrl = process.env.R2_PUBLIC_URL || "https://pub-58a8d5edd72444eda2ea8cd3df3d17b2.r2.dev";
+    const fileUrl = `${baseUrl}/${s3Key}`;
 
     res.status(200).json({
       message: "File transferred successfully",
